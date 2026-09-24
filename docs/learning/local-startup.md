@@ -15,6 +15,8 @@
 .\scripts\start.ps1 -Port 8001
 ```
 
+配置可以通过 `OPSPILOT_HOST`、`OPSPILOT_PORT` 等环境变量覆盖；脚本的 `-Port` 参数优先级更高，并会把最终 host/port 同步给应用进程。
+
 ## 脚本做了什么
 
 1. 自动切换到项目根目录，避免从其他目录双击时找不到 `app` 包。

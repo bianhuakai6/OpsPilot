@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 
-from app.config import Settings
 from app.models import Activity, ReservationRequest
 from app.routes.activities import router as activities_router
 from app.routes.health import router as health_router
+from app.runtime import database_engine, settings
 from app.store import activities, reset_state
 
 
 # 应用组装入口
-settings = Settings.from_env()
+# 应用组装入口
 app = FastAPI(title=settings.app_name, version=settings.app_version)
 app.include_router(health_router)
 app.include_router(activities_router)

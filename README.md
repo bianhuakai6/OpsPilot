@@ -4,6 +4,8 @@
 
 MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\mysql.ps1 -Action up`，查看状态运行 `-Action status`。
 
+数据库模式启动方式见 [MySQL 本地基础设施](docs/learning/mysql-local-infrastructure.md)；默认 API 仍使用内存模式，避免本地学习和单元测试强依赖数据库。
+
 面向在线服务的云原生应用交付与智能运维平台。
 
 ## 项目目标

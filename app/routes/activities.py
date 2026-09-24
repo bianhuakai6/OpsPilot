@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Header, HTTPException
 
 from app.models import ReservationRequest
+from app.mysql_store import ReservationConflict, get_activity as get_mysql_activity, reserve as reserve_mysql
+from app.runtime import database_engine
 from app.store import activities, get_activity, idempotency_records, state_lock
 
 
@@ -10,6 +12,12 @@ router = APIRouter(prefix="/api/v1/activities", tags=["activities"])
 # 活动查询接口
 @router.get("/{activity_id}")
 def get_activity_detail(activity_id: str) -> dict[str, object]:
+    if database_engine is not None:
+        activity = get_mysql_activity(database_engine, activity_id)
+        if activity is None:
+            raise HTTPException(status_code=404, detail={"code": "activity_not_found", "message": "活动不存在"})
+        return activity
+
     activity = get_activity(activity_id)
     return {
         "activity_id": activity.activity_id,
@@ -29,6 +37,15 @@ def reserve(
     request: ReservationRequest,
     idempotency_key: str = Header(min_length=1, max_length=128, alias="Idempotency-Key"),
 ) -> dict[str, str]:
+    if database_engine is not None:
+        try:
+            status_code, response = reserve_mysql(database_engine, activity_id, request.user_id, idempotency_key)
+        except ReservationConflict as conflict:
+            raise HTTPException(status_code=409, detail=conflict.response) from conflict
+        if status_code != 201:
+            raise HTTPException(status_code=status_code, detail=response)
+        return response
+
     # 检查和写入必须在同一个临界区，避免并发请求超卖名额。
     with state_lock:
         activity = get_activity(activity_id)

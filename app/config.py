@@ -10,6 +10,8 @@ class Settings:
     environment: str = "local"
     host: str = "127.0.0.1"
     port: int = 8000
+    storage: str = "memory"
+    database_url: str = "mysql+pymysql://opspilot:opspilot_local_password@127.0.0.1:3306/opspilot"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -26,4 +28,6 @@ class Settings:
             environment=os.getenv("OPSPILOT_ENV", cls.environment),
             host=os.getenv("OPSPILOT_HOST", cls.host),
             port=port,
+            storage=os.getenv("OPSPILOT_STORAGE", cls.storage),
+            database_url=os.getenv("OPSPILOT_DATABASE_URL", cls.database_url),
         )

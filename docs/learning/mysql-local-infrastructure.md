@@ -29,6 +29,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\mysql.ps1 -Action 
 
 Compose 默认值仅用于本地学习，不可直接用于生产。可通过 `.env` 覆盖 `MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD` 和 `MYSQL_ROOT_PASSWORD`；`.env` 已被 Git 忽略，密码不能提交到仓库。
 
+## 应用切换到 MySQL 模式
+
+数据库容器健康后，可以用环境变量启动第二个 API 实例，避免影响当前 8000 端口的内存模式：
+
+```powershell
+$env:OPSPILOT_STORAGE = "mysql"
+$env:OPSPILOT_PORT = "8003"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8003
+```
+
+然后访问 `http://127.0.0.1:8003/readyz`。此模式下活动查询、预约和幂等记录走 MySQL；未设置 `OPSPILOT_STORAGE` 时仍使用内存模式。
+
 ## 本阶段验收
 
-验收包括：容器处于 `healthy`，3306 端口可连接，三张表存在，默认活动已初始化。应用接口仍以内存状态为准，直到 SQLAlchemy 存储层完成并通过重启、并发、幂等和回滚测试。
+验收包括：容器处于 `healthy`，3306 端口可连接，三张表存在，默认活动已初始化；MySQL 集成测试通过并验证并发不超卖、幂等重试和重复预约回滚。应用默认仍是内存模式，只有设置 `OPSPILOT_STORAGE=mysql` 才切换到数据库。

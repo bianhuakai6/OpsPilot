@@ -12,6 +12,8 @@ class Settings:
     port: int = 8000
     storage: str = "memory"
     database_url: str = "mysql+pymysql://opspilot:opspilot_local_password@127.0.0.1:3306/opspilot"
+    redis_enabled: bool = False
+    redis_url: str = "redis://127.0.0.1:6379/0"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -30,4 +32,6 @@ class Settings:
             port=port,
             storage=os.getenv("OPSPILOT_STORAGE", cls.storage),
             database_url=os.getenv("OPSPILOT_DATABASE_URL", cls.database_url),
+            redis_enabled=os.getenv("OPSPILOT_REDIS_ENABLED", "false").lower() in {"1", "true", "yes"},
+            redis_url=os.getenv("OPSPILOT_REDIS_URL", cls.redis_url),
         )

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from app.logging_config import configure_logging
+from app.middleware import RequestLoggingMiddleware
 from app.models import Activity, ReservationRequest
 from app.routes.activities import router as activities_router
 from app.routes.health import router as health_router
@@ -9,7 +11,9 @@ from app.store import activities, reset_state
 
 # 应用组装入口
 # 应用组装入口
+configure_logging()
 app = FastAPI(title=settings.app_name, version=settings.app_version)
+app.add_middleware(RequestLoggingMiddleware)
 app.include_router(health_router)
 app.include_router(activities_router)
 

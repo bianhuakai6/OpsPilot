@@ -3,7 +3,8 @@ from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import check_database
-from app.runtime import database_engine
+from app.redis_client import check_redis
+from app.runtime import database_engine, redis_client
 
 router = APIRouter(tags=["system"])
 
@@ -25,4 +26,11 @@ def readyz() -> dict[str, str]:
             raise HTTPException(status_code=503, detail={"code": "database_unavailable"}) from exc
         if not available:
             raise HTTPException(status_code=503, detail={"code": "database_unavailable"})
+    if redis_client is not None:
+        try:
+            available = check_redis(redis_client)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail={"code": "redis_unavailable"}) from exc
+        if not available:
+            raise HTTPException(status_code=503, detail={"code": "redis_unavailable"})
     return {"status": "ready"}

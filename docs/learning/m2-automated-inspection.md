@@ -10,15 +10,19 @@
 POST /api/v1/inspections/run
 ```
 
-最近结果也可以通过 `GET /api/v1/inspections/history` 查询。当前只保留进程内最近 20 次，服务重启后清空；这样先验证查询和控制台流程，后续再把报告持久化到 MySQL。
+最近结果也可以通过 `GET /api/v1/inspections/history` 查询。MySQL 模式将报告与明细持久化，应用重启后仍可读取；内存模式只保留当前进程最近 20 次，重启后清空。详见 [巡检历史持久化](m2-inspection-history-persistence.md)。
 
 这是只读操作，不修改活动、预约、MySQL 或 Redis 数据。每次返回 `inspection_id`、整体 `status`、`checked_at` 和 `checks`。每项结果固定包含 `check_id`、`status`、`severity`、`evidence`、`recommendation`。
 
 当前检查项：
 
 - `process_liveness`：应用能响应巡检请求；
+- `configuration_integrity`：检查存储模式、启用依赖所需连接串和端口范围；
+- `metrics_registry`：确认 Prometheus 指标注册表可读取且包含 OpsPilot HTTP 请求指标；
 - `mysql_connectivity`：MySQL 模式下执行 `SELECT 1`，未启用时标记 `skipped`；
 - `redis_connectivity`：Redis 启用时执行 `PING`，未启用时标记 `skipped`。
+
+配置检查只校验少量关键字段是否自洽，依赖连通性由独立检查项负责。指标检查也不等于已经配置 Prometheus 服务端、告警规则或长期存储。
 
 ## 为什么不让巡检自动修复
 

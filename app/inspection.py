@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.database import check_database
 from app.inspection_store import save_inspection
+from app.metrics import metrics_payload
 from app.redis_client import check_redis
 from app.runtime import database_engine, redis_client, settings
 
@@ -26,6 +27,33 @@ def run_inspection() -> dict[str, object]:
     checks: list[dict[str, str]] = [
         _check("process_liveness", "pass", "info", "应用进程能够响应巡检请求", "无需处理")
     ]
+
+    # 配置检查先于依赖检查，帮助区分“依赖故障”和“配置本身不完整”。
+    configuration_errors: list[str] = []
+    if settings.storage not in {"memory", "mysql"}:
+        configuration_errors.append("OPSPILOT_STORAGE 必须是 memory 或 mysql")
+    if settings.storage == "mysql" and not settings.database_url.strip():
+        configuration_errors.append("MySQL 模式缺少 OPSPILOT_DATABASE_URL")
+    if settings.redis_enabled and not settings.redis_url.strip():
+        configuration_errors.append("Redis 已启用但缺少 OPSPILOT_REDIS_URL")
+    if not 1 <= settings.port <= 65535:
+        configuration_errors.append("OPSPILOT_PORT 必须在 1 到 65535 之间")
+    checks.append(_check(
+        "configuration_integrity",
+        "fail" if configuration_errors else "pass",
+        "critical" if configuration_errors else "info",
+        "; ".join(configuration_errors) if configuration_errors else "运行配置字段完整且值在允许范围内",
+        "修正运行环境变量后重新巡检" if configuration_errors else "无需处理",
+    ))
+
+    metrics_text = metrics_payload().decode("utf-8", errors="replace")
+    checks.append(_check(
+        "metrics_registry",
+        "pass" if "opspilot_http_requests_total" in metrics_text else "fail",
+        "info" if "opspilot_http_requests_total" in metrics_text else "warning",
+        "Prometheus 指标注册表可读取" if "opspilot_http_requests_total" in metrics_text else "未发现 OpsPilot HTTP 指标",
+        "无需处理" if "opspilot_http_requests_total" in metrics_text else "检查指标初始化和 /metrics 路由",
+    ))
 
     if database_engine is None:
         checks.append(_check("mysql_connectivity", "skipped", "info", "当前 OPSPILOT_STORAGE 不是 mysql", "启用 MySQL 模式后再检查数据库"))

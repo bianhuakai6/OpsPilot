@@ -2,6 +2,8 @@
 
 本地启动：双击 `start-project.bat`，或在 PowerShell 中运行 `.\scripts\start.ps1`。启动后访问 `http://127.0.0.1:8000/docs`；脚本细节见 [本地启动说明](docs/learning/local-startup.md)。
 
+MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\mysql.ps1 -Action up`，查看状态运行 `-Action status`。
+
 面向在线服务的云原生应用交付与智能运维平台。
 
 ## 项目目标

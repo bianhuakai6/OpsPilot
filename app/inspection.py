@@ -7,7 +7,7 @@ import shutil
 
 from app.database import check_database
 from app.inspection_store import save_inspection
-from app.metrics import metrics_payload
+from app.metrics import metrics_freshness, metrics_payload
 from app.redis_client import check_redis
 from app.runtime import database_engine, redis_client, settings
 
@@ -108,12 +108,21 @@ def run_inspection() -> dict[str, object]:
     ))
 
     metrics_text = metrics_payload().decode("utf-8", errors="replace")
+    registry_available = "opspilot_http_requests_total" in metrics_text
+    freshness_status, freshness_evidence = metrics_freshness()
     checks.append(_check(
         "metrics_registry",
-        "pass" if "opspilot_http_requests_total" in metrics_text else "fail",
-        "info" if "opspilot_http_requests_total" in metrics_text else "warning",
-        "Prometheus 指标注册表可读取" if "opspilot_http_requests_total" in metrics_text else "未发现 OpsPilot HTTP 指标",
-        "无需处理" if "opspilot_http_requests_total" in metrics_text else "检查指标初始化和 /metrics 路由",
+        "pass" if registry_available else "fail",
+        "info" if registry_available else "warning",
+        "Prometheus 指标注册表可读取" if registry_available else "未发现 OpsPilot HTTP 指标",
+        "无需处理" if registry_available else "检查指标初始化和 /metrics 路由",
+    ))
+    checks.append(_check(
+        "metrics_freshness",
+        freshness_status,
+        "info" if freshness_status in {"pass", "skipped"} else "warning",
+        freshness_evidence,
+        "无需处理" if freshness_status == "pass" else "确认请求指标采集链路和 Prometheus 抓取状态",
     ))
     checks.extend(_resource_checks())
 

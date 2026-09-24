@@ -1,11 +1,13 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import text
 
 from app.config import Settings
 from app.database import create_database_engine
+from app.inspection_store import ensure_inspection_tables, load_inspection_history, save_inspection
 from app.mysql_store import ReservationConflict, reserve
 
 
@@ -65,3 +67,74 @@ def test_mysql_duplicate_user_does_not_leak_capacity(mysql_engine) -> None:
             text("SELECT reserved_count FROM activities WHERE activity_id = 'activity-001'")
         ).scalar_one()
     assert reserved_count == 1
+
+
+def test_mysql_inspection_history_persists_reports_and_checks(mysql_engine) -> None:
+    inspection_ids = ["test-inspection-history-old", "test-inspection-history-new"]
+    ensure_inspection_tables(mysql_engine)
+    with mysql_engine.begin() as connection:
+        connection.execute(
+            text("DELETE FROM inspection_checks WHERE inspection_id IN (:old_id, :new_id)"),
+            {"old_id": inspection_ids[0], "new_id": inspection_ids[1]},
+        )
+        connection.execute(
+            text("DELETE FROM inspection_runs WHERE inspection_id IN (:old_id, :new_id)"),
+            {"old_id": inspection_ids[0], "new_id": inspection_ids[1]},
+        )
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    reports = [
+        {
+            "inspection_id": inspection_ids[0],
+            "environment": "test",
+            "status": "pass",
+            "checked_at": now,
+            "checks": [{
+                "check_id": "mysql_connectivity",
+                "status": "pass",
+                "severity": "info",
+                "evidence": "SELECT 1 成功",
+                "recommendation": "无需处理",
+            }],
+        },
+        {
+            "inspection_id": inspection_ids[1],
+            "environment": "test",
+            "status": "fail",
+            "checked_at": now + timedelta(seconds=1),
+            "checks": [{
+                "check_id": "redis_connectivity",
+                "status": "fail",
+                "severity": "warning",
+                "evidence": "测试证据",
+                "recommendation": "检查 Redis",
+            }],
+        },
+    ]
+
+    try:
+        for report in reports:
+            save_inspection(mysql_engine, report)
+
+        history = load_inspection_history(mysql_engine, limit=2)
+
+        assert [item["inspection_id"] for item in history] == [inspection_ids[1], inspection_ids[0]]
+        assert history[0]["status"] == "fail"
+        assert history[0]["checks"] == [{
+            "check_id": "redis_connectivity",
+            "status": "fail",
+            "severity": "warning",
+            "evidence": "测试证据",
+            "recommendation": "检查 Redis",
+        }]
+    finally:
+        # 仅删除本测试使用的 ID，避免影响本地已有巡检历史。
+        with mysql_engine.begin() as connection:
+            connection.execute(
+                text("DELETE FROM inspection_checks WHERE inspection_id IN (:old_id, :new_id)"),
+                {"old_id": inspection_ids[0], "new_id": inspection_ids[1]},
+            )
+            connection.execute(
+                text("DELETE FROM inspection_runs WHERE inspection_id IN (:old_id, :new_id)"),
+                {"old_id": inspection_ids[0], "new_id": inspection_ids[1]},
+            )

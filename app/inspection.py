@@ -2,6 +2,7 @@ from collections import deque
 from datetime import datetime, timezone
 
 from app.database import check_database
+from app.inspection_store import save_inspection
 from app.redis_client import check_redis
 from app.runtime import database_engine, redis_client, settings
 
@@ -51,6 +52,8 @@ def run_inspection() -> dict[str, object]:
         "checked_at": datetime.now(timezone.utc),
         "checks": checks,
     }
+    if database_engine is not None:
+        save_inspection(database_engine, report)
     inspection_history.appendleft(report)
     return report
 

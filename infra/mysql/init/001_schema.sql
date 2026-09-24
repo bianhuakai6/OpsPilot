@@ -33,6 +33,26 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
     CONSTRAINT fk_idempotency_activity FOREIGN KEY (activity_id) REFERENCES activities(activity_id)
 );
 
+CREATE TABLE IF NOT EXISTS inspection_runs (
+    inspection_id VARCHAR(64) PRIMARY KEY,
+    environment VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    checked_at DATETIME(6) NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+);
+
+CREATE TABLE IF NOT EXISTS inspection_checks (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    inspection_id VARCHAR(64) NOT NULL,
+    check_id VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    severity VARCHAR(16) NOT NULL,
+    evidence TEXT NOT NULL,
+    recommendation TEXT NOT NULL,
+    CONSTRAINT fk_inspection_checks_run FOREIGN KEY (inspection_id) REFERENCES inspection_runs(inspection_id),
+    INDEX idx_inspection_checks_run (inspection_id)
+);
+
 INSERT INTO activities (activity_id, name, starts_at, ends_at, capacity)
 VALUES ('activity-001', '云平台实践资源预约', '2025-01-01 00:00:00.000000', '2099-01-01 00:00:00.000000', 2)
 ON DUPLICATE KEY UPDATE activity_id = activity_id;

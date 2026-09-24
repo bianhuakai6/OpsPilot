@@ -1,12 +1,20 @@
 from fastapi import APIRouter
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
+from fastapi.responses import Response
 
 from app.database import check_database
+from app.metrics import metrics_payload
 from app.redis_client import check_redis
 from app.runtime import database_engine, redis_client
 
 router = APIRouter(tags=["system"])
+
+
+# Prometheus 指标接口
+@router.get("/metrics", include_in_schema=False)
+def metrics() -> Response:
+    return Response(content=metrics_payload(), media_type="text/plain; version=0.0.4")
 
 
 # 健康检查接口

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpsPilot 运维控制台</title>
+  <style>
+    :root { --ink:#17212b; --muted:#687582; --line:#dfe5e9; --panel:#fff; --bg:#f3f6f7; --green:#14804a; --amber:#b56b00; --red:#b42318; --blue:#1e5c9a; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--bg); font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    header { background:#17212b; color:#fff; padding:22px clamp(20px,5vw,64px); display:flex; justify-content:space-between; align-items:flex-end; gap:20px; }
+    header h1 { margin:0; font-size:24px; letter-spacing:0; }
+    header p { margin:5px 0 0; color:#b9c5cd; }
+    .updated { color:#b9c5cd; white-space:nowrap; }
+    main { max-width:1280px; margin:0 auto; padding:28px clamp(20px,5vw,64px) 56px; }
+    .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    button { border:0; background:var(--blue); color:#fff; padding:10px 16px; border-radius:5px; cursor:pointer; font-weight:600; }
+    button:hover { background:#164a7d; }
+    .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px; }
+    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .value { font-size:25px; font-weight:700; margin-top:5px; }
+    .status { display:inline-flex; align-items:center; gap:7px; font-weight:650; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#9aa5ad; }
+    .ok .dot { background:var(--green); } .warn .dot { background:var(--amber); } .bad .dot { background:var(--red); }
+    section { margin-top:22px; }
+    h2 { font-size:16px; margin:0 0 10px; }
+    .inspection { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+    .check { border-top:3px solid var(--green); padding-top:12px; }
+    .check.warn { border-color:var(--amber); } .check.bad { border-color:var(--red); }
+    .check strong { display:block; margin:3px 0 7px; }
+    .evidence { color:var(--muted); min-height:42px; }
+    .recommendation { margin-top:8px; color:var(--blue); }
+    .activity-row { display:flex; justify-content:space-between; gap:18px; align-items:center; }
+    .capacity { width:180px; height:8px; background:#e8edf0; border-radius:4px; overflow:hidden; }
+    .capacity span { display:block; height:100%; background:var(--blue); }
+    .empty { color:var(--muted); }
+    @media (max-width:800px) { header { display:block; } .updated { margin-top:12px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .inspection { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>OpsPilot 运维控制台</h1><p>在线服务交付与智能运维平台 · 本地验证环境</p></div>
+    <div class="updated" id="updated">等待加载</div>
+  </header>
+  <main>
+    <div class="toolbar"><strong>服务概览</strong><button id="inspect" type="button">重新巡检</button></div>
+    <div class="grid">
+      <div class="panel"><div class="label">进程存活</div><div class="value status" id="liveness"><i class="dot"></i>检查中</div></div>
+      <div class="panel"><div class="label">服务就绪</div><div class="value status" id="readiness"><i class="dot"></i>检查中</div></div>
+      <div class="panel"><div class="label">MySQL</div><div class="value status" id="mysql"><i class="dot"></i>巡检中</div></div>
+      <div class="panel"><div class="label">Redis</div><div class="value status" id="redis"><i class="dot"></i>巡检中</div></div>
+    </div>
+    <section><h2>在线资源</h2><div class="panel" id="activity"><span class="empty">加载中...</span></div></section>
+    <section><h2>最近一次巡检</h2><div class="panel"><div class="inspection" id="checks"><span class="empty">加载中...</span></div></div></section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const setStatus = (id, text, kind) => { const el=$(id); el.className=`value status ${kind||''}`; el.innerHTML=`<i class="dot"></i>${text}`; };
+    async function json(url, options) { const response=await fetch(url, options); if(!response.ok) throw new Error(`${response.status}`); return response.json(); }
+    function renderChecks(report) {
+      $('checks').innerHTML = report.checks.map(check => `<article class="check ${check.status==='fail'?'bad':check.status==='skipped'?'warn':''}"><div class="label">${check.check_id}</div><strong>${check.status.toUpperCase()} · ${check.severity}</strong><div class="evidence">${check.evidence}</div><div class="recommendation">${check.recommendation}</div></article>`).join('');
+      const byId=Object.fromEntries(report.checks.map(item=>[item.check_id,item]));
+      setStatus('mysql', byId.mysql_connectivity.status==='pass'?'正常':byId.mysql_connectivity.status==='skipped'?'未启用':'异常', byId.mysql_connectivity.status==='pass'?'ok':byId.mysql_connectivity.status==='skipped'?'warn':'bad');
+      setStatus('redis', byId.redis_connectivity.status==='pass'?'正常':byId.redis_connectivity.status==='skipped'?'未启用':'异常', byId.redis_connectivity.status==='pass'?'ok':byId.redis_connectivity.status==='skipped'?'warn':'bad');
+      $('updated').textContent=`巡检时间 ${new Date(report.checked_at).toLocaleTimeString()}`;
+    }
+    async function refresh() {
+      setStatus('liveness','检查中',''); setStatus('readiness','检查中','');
+      try { await json('/healthz'); setStatus('liveness','正常','ok'); } catch { setStatus('liveness','异常','bad'); }
+      try { await json('/readyz'); setStatus('readiness','正常','ok'); } catch { setStatus('readiness','异常','bad'); }
+      try { const activity=await json('/api/v1/activities/activity-001'); const used=activity.capacity-activity.remaining_capacity; $('activity').innerHTML=`<div class="activity-row"><div><strong>${activity.name}</strong><div class="label">${activity.activity_id} · ${activity.status}</div></div><div><strong>${activity.remaining_capacity} / ${activity.capacity}</strong><div class="capacity"><span style="width:${Math.min(100,used/activity.capacity*100)}%"></span></div></div></div>`; } catch { $('activity').innerHTML='<span class="empty">资源数据暂不可用</span>'; }
+      try { renderChecks(await json('/api/v1/inspections/run',{method:'POST'})); } catch { $('checks').innerHTML='<span class="empty">巡检请求失败，请查看服务日志</span>'; }
+    }
+    $('inspect').addEventListener('click', refresh); refresh();
+  </script>
+</body>
+</html>

@@ -26,6 +26,8 @@ def test_inspection_checks_configuration_and_metrics() -> None:
     checks = {item["check_id"]: item for item in response.json()["checks"]}
     assert checks["configuration_integrity"]["status"] == "pass"
     assert checks["metrics_registry"]["status"] == "pass"
+    assert checks["disk_space"]["status"] in {"pass", "fail", "skipped"}
+    assert checks["memory_available"]["status"] in {"pass", "fail", "skipped"}
 
 
 def test_inspection_reports_invalid_configuration(monkeypatch) -> None:
@@ -39,3 +41,19 @@ def test_inspection_reports_invalid_configuration(monkeypatch) -> None:
     assert check["status"] == "fail"
     assert "OPSPILOT_STORAGE" in check["evidence"]
     assert "OPSPILOT_PORT" in check["evidence"]
+
+
+def test_resource_checks_report_low_disk_space(monkeypatch) -> None:
+    class Usage:
+        total = 100
+        used = 95
+        free = 5
+
+    monkeypatch.setattr(inspection.shutil, "disk_usage", lambda _: Usage())
+    monkeypatch.setattr(inspection, "_memory_snapshot", lambda: (100, 50))
+
+    checks = {item["check_id"]: item for item in inspection._resource_checks()}
+
+    assert checks["disk_space"]["status"] == "fail"
+    assert checks["disk_space"]["severity"] == "critical"
+    assert checks["memory_available"]["status"] == "pass"

@@ -1,5 +1,9 @@
 from collections import deque
 from datetime import datetime, timezone
+import ctypes
+import os
+import platform
+import shutil
 
 from app.database import check_database
 from app.inspection_store import save_inspection
@@ -20,6 +24,63 @@ def _check(check_id: str, status: str, severity: str, evidence: str, recommendat
         "evidence": evidence,
         "recommendation": recommendation,
     }
+
+
+def _memory_snapshot() -> tuple[int, int] | None:
+    """返回总内存和可用内存字节数；无法读取时由巡检标记为 skipped。"""
+    if platform.system() == "Windows":
+        class MemoryStatus(ctypes.Structure):
+            _fields_ = [("length", ctypes.c_ulong), ("memory_load", ctypes.c_ulong),
+                        ("total", ctypes.c_ulonglong), ("available", ctypes.c_ulonglong),
+                        ("page_total", ctypes.c_ulonglong), ("page_available", ctypes.c_ulonglong),
+                        ("virtual_total", ctypes.c_ulonglong), ("virtual_available", ctypes.c_ulonglong),
+                        ("extended", ctypes.c_ulonglong)]
+
+        status = MemoryStatus()
+        status.length = ctypes.sizeof(MemoryStatus)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+            return status.total, status.available
+        return None
+    if hasattr(os, "sysconf"):
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        total = page_size * os.sysconf("SC_PHYS_PAGES")
+        available = page_size * os.sysconf("SC_AVPHYS_PAGES")
+        return total, available
+    return None
+
+
+def _resource_checks() -> list[dict[str, str]]:
+    """读取只读主机资源指标，低于 10% 可用空间时提示风险。"""
+    checks: list[dict[str, str]] = []
+    try:
+        usage = shutil.disk_usage(os.path.abspath(os.sep))
+        free_percent = usage.free / usage.total * 100 if usage.total else 0
+        checks.append(_check(
+            "disk_space",
+            "pass" if free_percent >= 10 else "fail",
+            "info" if free_percent >= 10 else "critical",
+            f"系统盘可用空间 {free_percent:.1f}%（{usage.free // (1024 ** 3)} GiB）",
+            "无需处理" if free_percent >= 10 else "清理磁盘或扩容文件系统",
+        ))
+    except OSError as exc:
+        checks.append(_check("disk_space", "skipped", "warning", f"无法读取系统盘: {type(exc).__name__}", "检查运行账户和文件系统权限"))
+
+    try:
+        memory = _memory_snapshot()
+        if memory is None:
+            raise RuntimeError("memory_api_unavailable")
+        total, available = memory
+        available_percent = available / total * 100 if total else 0
+        checks.append(_check(
+            "memory_available",
+            "pass" if available_percent >= 10 else "fail",
+            "info" if available_percent >= 10 else "critical",
+            f"可用内存 {available_percent:.1f}%（{available // (1024 ** 3)} GiB）",
+            "无需处理" if available_percent >= 10 else "降低负载或增加内存",
+        ))
+    except (OSError, RuntimeError):
+        checks.append(_check("memory_available", "skipped", "warning", "当前平台无法读取可用内存", "在支持的平台启用内存采集"))
+    return checks
 
 
 def run_inspection() -> dict[str, object]:
@@ -54,6 +115,7 @@ def run_inspection() -> dict[str, object]:
         "Prometheus 指标注册表可读取" if "opspilot_http_requests_total" in metrics_text else "未发现 OpsPilot HTTP 指标",
         "无需处理" if "opspilot_http_requests_total" in metrics_text else "检查指标初始化和 /metrics 路由",
     ))
+    checks.extend(_resource_checks())
 
     if database_engine is None:
         checks.append(_check("mysql_connectivity", "skipped", "info", "当前 OPSPILOT_STORAGE 不是 mysql", "启用 MySQL 模式后再检查数据库"))

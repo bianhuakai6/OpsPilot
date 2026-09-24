@@ -19,10 +19,14 @@ POST /api/v1/inspections/run
 - `process_liveness`：应用能响应巡检请求；
 - `configuration_integrity`：检查存储模式、启用依赖所需连接串和端口范围；
 - `metrics_registry`：确认 Prometheus 指标注册表可读取且包含 OpsPilot HTTP 请求指标；
+- `disk_space`：读取系统盘可用空间，可用比例低于 10% 标记为 critical；
+- `memory_available`：读取主机可用内存，可用比例低于 10% 标记为 critical；
 - `mysql_connectivity`：MySQL 模式下执行 `SELECT 1`，未启用时标记 `skipped`；
 - `redis_connectivity`：Redis 启用时执行 `PING`，未启用时标记 `skipped`。
 
 配置检查只校验少量关键字段是否自洽，依赖连通性由独立检查项负责。指标检查也不等于已经配置 Prometheus 服务端、告警规则或长期存储。
+
+资源检查只读系统信息，不会清理磁盘、杀进程或调整内存。Windows 使用系统内存 API，类 Unix 系统使用 `sysconf`；平台不支持或权限不足时返回 `skipped`，避免把“无法采集”误报成“资源耗尽”。10% 是本地演示阈值，生产环境应结合机器规格、业务基线和告警窗口调整。
 
 ## 为什么不让巡检自动修复
 

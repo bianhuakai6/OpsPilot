@@ -28,6 +28,7 @@
 - [业务场景](docs/01-business-scenario.md)：在线资源预约作为示例负载
 - [接口与数据模型](docs/02-api-and-data-model.md)：请求契约、错误分类和数据库约束草案
 - [M1 学习记录](docs/learning/m1-in-memory-service.md)：内存实现、幂等和并发边界
+- [HTTP 接口与请求链路](docs/learning/http-api-and-request-flow.md)：理解 `/docs`、请求组成和服务调用路径
 - [岗位技术分析](三类技术岗位共通技术点分析.md)：目标岗位和能力背景
 
 ## 开发原则

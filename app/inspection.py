@@ -1,8 +1,13 @@
+from collections import deque
 from datetime import datetime, timezone
 
 from app.database import check_database
 from app.redis_client import check_redis
 from app.runtime import database_engine, redis_client, settings
+
+
+# 进程内保留最近巡检结果，后续可迁移到 MySQL。
+inspection_history: deque[dict[str, object]] = deque(maxlen=20)
 
 
 def _check(check_id: str, status: str, severity: str, evidence: str, recommendation: str) -> dict[str, str]:
@@ -39,11 +44,16 @@ def run_inspection() -> dict[str, object]:
         except Exception as exc:
             checks.append(_check("redis_connectivity", "fail", "warning", f"Redis 连接异常: {type(exc).__name__}", "检查 Redis 容器、URL 和端口"))
 
-    failed = [item for item in checks if item["status"] == "fail"]
-    return {
+    report = {
         "inspection_id": f"inspection-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}",
         "environment": settings.environment,
-        "status": "fail" if failed else "pass",
+        "status": "fail" if any(item["status"] == "fail" for item in checks) else "pass",
         "checked_at": datetime.now(timezone.utc),
         "checks": checks,
     }
+    inspection_history.appendleft(report)
+    return report
+
+
+def get_inspection_history() -> list[dict[str, object]]:
+    return list(inspection_history)

@@ -53,6 +53,7 @@
     </div>
     <section><h2>在线资源</h2><div class="panel" id="activity"><span class="empty">加载中...</span></div></section>
     <section><h2>最近一次巡检</h2><div class="panel"><div class="inspection" id="checks"><span class="empty">加载中...</span></div></div></section>
+    <section><h2>巡检历史</h2><div class="panel" id="history"><span class="empty">加载中...</span></div></section>
   </main>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -65,12 +66,16 @@
       setStatus('redis', byId.redis_connectivity.status==='pass'?'正常':byId.redis_connectivity.status==='skipped'?'未启用':'异常', byId.redis_connectivity.status==='pass'?'ok':byId.redis_connectivity.status==='skipped'?'warn':'bad');
       $('updated').textContent=`巡检时间 ${new Date(report.checked_at).toLocaleTimeString()}`;
     }
+    async function renderHistory() {
+      const data=await json('/api/v1/inspections/history');
+      $('history').innerHTML=data.items.length ? data.items.slice(0,8).map(item => `<div class="activity-row" style="padding:8px 0;border-bottom:1px solid #e8edf0"><span><strong>${item.status.toUpperCase()}</strong><div class="label">${item.inspection_id}</div></span><span class="label">${new Date(item.checked_at).toLocaleString()}</span></div>`).join('') : '<span class="empty">暂无巡检记录</span>';
+    }
     async function refresh() {
       setStatus('liveness','检查中',''); setStatus('readiness','检查中','');
       try { await json('/healthz'); setStatus('liveness','正常','ok'); } catch { setStatus('liveness','异常','bad'); }
       try { await json('/readyz'); setStatus('readiness','正常','ok'); } catch { setStatus('readiness','异常','bad'); }
       try { const activity=await json('/api/v1/activities/activity-001'); const used=activity.capacity-activity.remaining_capacity; $('activity').innerHTML=`<div class="activity-row"><div><strong>${activity.name}</strong><div class="label">${activity.activity_id} · ${activity.status}</div></div><div><strong>${activity.remaining_capacity} / ${activity.capacity}</strong><div class="capacity"><span style="width:${Math.min(100,used/activity.capacity*100)}%"></span></div></div></div>`; } catch { $('activity').innerHTML='<span class="empty">资源数据暂不可用</span>'; }
-      try { renderChecks(await json('/api/v1/inspections/run',{method:'POST'})); } catch { $('checks').innerHTML='<span class="empty">巡检请求失败，请查看服务日志</span>'; }
+      try { const report=await json('/api/v1/inspections/run',{method:'POST'}); renderChecks(report); await renderHistory(); } catch { $('checks').innerHTML='<span class="empty">巡检请求失败，请查看服务日志</span>'; }
     }
     $('inspect').addEventListener('click', refresh); refresh();
   </script>

@@ -10,6 +10,8 @@
 POST /api/v1/inspections/run
 ```
 
+最近结果也可以通过 `GET /api/v1/inspections/history` 查询。当前只保留进程内最近 20 次，服务重启后清空；这样先验证查询和控制台流程，后续再把报告持久化到 MySQL。
+
 这是只读操作，不修改活动、预约、MySQL 或 Redis 数据。每次返回 `inspection_id`、整体 `status`、`checked_at` 和 `checks`。每项结果固定包含 `check_id`、`status`、`severity`、`evidence`、`recommendation`。
 
 当前检查项：

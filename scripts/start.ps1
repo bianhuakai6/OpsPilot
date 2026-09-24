@@ -45,7 +45,24 @@ if ([string]::IsNullOrWhiteSpace($effectiveHost)) {
 
 $portInUse = Get-NetTCPConnection -LocalPort $effectivePort -State Listen -ErrorAction SilentlyContinue
 if ($null -ne $portInUse) {
-    throw "Port $effectivePort is already in use. Close the process or choose another port with -Port."
+    # Reuse an existing OpsPilot instance instead of treating it as a foreign conflict.
+    $expectedTitle = [Environment]::GetEnvironmentVariable("OPSPILOT_APP_NAME")
+    if ([string]::IsNullOrWhiteSpace($expectedTitle)) {
+        $expectedTitle = "OpsPilot"
+    }
+    $openApiUrl = "http://127.0.0.1:$effectivePort/openapi.json"
+    $runningTitle = & $python -c "import json,urllib.request; print(json.load(urllib.request.urlopen('$openApiUrl', timeout=2)).get('info', {}).get('title', ''))" 2>$null
+    if ($LASTEXITCODE -eq 0 -and $runningTitle -eq $expectedTitle) {
+        Write-Host "OpsPilot is already running on port $effectivePort." -ForegroundColor Yellow
+        Write-Host "API docs: http://${effectiveHost}:$effectivePort/docs"
+        Write-Host "Health: http://${effectiveHost}:$effectivePort/healthz"
+        exit 0
+    }
+
+    $ownerPid = $portInUse[0].OwningProcess
+    $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$ownerPid" -ErrorAction SilentlyContinue
+    $ownerName = if ($null -ne $owner) { $owner.Name } else { "unknown process" }
+    throw "Port $effectivePort is used by PID $ownerPid ($ownerName), and is not the expected OpsPilot service. Choose another port with -Port."
 }
 
 Write-Host "OpsPilot is starting..." -ForegroundColor Cyan

@@ -25,6 +25,8 @@
 4. 检查端口是否已被占用，并给出明确提示。
 5. 启动 `app.main:app`，不绕过项目入口。
 
+If the selected port already serves this OpsPilot instance, the script reuses it and prints its URLs. If another process owns the port, the script reports that process and exits without terminating it.
+
 ## 阶段性维护规则
 
 每当服务启动方式、Python 版本、端口约定或依赖安装方式发生变化，必须同步检查：

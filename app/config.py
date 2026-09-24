@@ -11,7 +11,7 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 8000
     storage: str = "memory"
-    database_url: str = "mysql+pymysql://opspilot:opspilot_local_password@127.0.0.1:3306/opspilot"
+    database_url: str = "mysql+pymysql://opspilot:opspilot_local_password@127.0.0.1:3306/opspilot?charset=utf8mb4"
     redis_enabled: bool = False
     redis_url: str = "redis://127.0.0.1:6379/0"
 

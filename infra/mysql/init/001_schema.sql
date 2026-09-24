@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 CREATE TABLE IF NOT EXISTS activities (
     activity_id VARCHAR(64) PRIMARY KEY,
     name VARCHAR(200) NOT NULL,

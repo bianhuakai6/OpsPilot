@@ -1,5 +1,7 @@
 # MySQL 本地基础设施
 
+> Python 驱动说明：项目通过 PyMySQL 连接 MySQL 8.4。MySQL 8 默认使用 `caching_sha2_password` 认证，PyMySQL 在非 TLS 本地连接中完成完整认证时需要 `cryptography` 来加密认证数据，因此该库作为应用依赖固定安装。它不负责数据库连接池或 SQL 执行。
+
 ## 当前完成范围
 
 本阶段加入 MySQL 8.4 的 Docker Compose 配置和初始化表结构，但应用预约接口仍使用内存存储。这里先验证数据库基础设施可启动、可健康检查，下一阶段再接入 SQLAlchemy 和真实事务。

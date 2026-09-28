@@ -33,10 +33,16 @@ $testImage = "opspilot:test-$revision"
 Write-Host "Running tests in Docker: $testImage..." -ForegroundColor Cyan
 & docker build --file Dockerfile.test --tag $testImage .
 if ($LASTEXITCODE -ne 0) {
-    & docker image rm $testImage *> $null
+    & docker image inspect $testImage *> $null
+    if ($LASTEXITCODE -eq 0) {
+        & docker image rm $testImage *> $null
+    }
     throw "Tests failed in Docker. The application image was not built."
 }
-& docker image rm $testImage *> $null
+& docker image inspect $testImage *> $null
+if ($LASTEXITCODE -eq 0) {
+    & docker image rm $testImage *> $null
+}
 
 $image = "opspilot:$Tag"
 Write-Host "Building $image from revision $revision..." -ForegroundColor Cyan

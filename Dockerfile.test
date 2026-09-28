@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir \
 COPY pyproject.toml ./
 COPY docker-compose.yml docker-compose.release.yml ./
 COPY Dockerfile Dockerfile.test ./
+COPY start-container.bat ./
 COPY app ./app
 COPY tests ./tests
 COPY scripts ./scripts

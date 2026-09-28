@@ -5,7 +5,7 @@
 
 MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\mysql.ps1 -Action up`，查看状态运行 `-Action status`。
 
-数据库模式启动方式见 [MySQL 本地基础设施](docs/learning/mysql-local-infrastructure.md)；默认 API 仍使用内存模式，避免本地学习和单元测试强依赖数据库。
+数据库模式和启动方式见 [MySQL 本地基础设施](docs/learning/mysql-local-infrastructure.md)；默认启动脚本使用 MySQL + Redis 完整模式，自动化测试仍可在隔离环境使用内存模式。
 
 面向在线服务的云原生应用交付与智能运维平台。
 
@@ -21,9 +21,9 @@ MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\m
 
 ## 当前阶段
 
-**M1：在线资源预约服务（进行中）**
+**M2：本地依赖与可观测性（进行中）**
 
-已完成项目章程、开发规范、最小健康检查服务和 M1 内存版预约接口；自动化巡检已纳入 M2。当前 M1 接口测试已通过，下一步是补充 M1 验收记录后进入持久化设计。
+已完成 MySQL/Redis 本地集成、结构化日志、Prometheus 指标、自动化巡检及结果持久化、运维控制台、默认完整模式启动和轻量 HTTP 压测基线。当前实现带参数限制、单任务互斥和停止能力的可视化压力测试。压测结果仅用于本地环境可重复对比，不代表生产容量。
 
 ## 文档入口
 
@@ -35,6 +35,9 @@ MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\m
 - [业务场景](docs/01-business-scenario.md)：在线资源预约作为示例负载
 - [接口与数据模型](docs/02-api-and-data-model.md)：请求契约、错误分类和数据库约束草案
 - [M1 学习记录](docs/learning/m1-in-memory-service.md)：内存实现、幂等和并发边界
+- [M2 压测基线](docs/learning/m2-load-test.md)：本地只读 HTTP 压测及结果解读
+- [M2 验收记录](docs/learning/m2-acceptance.md)：当前本地依赖和可观测性闭环证据
+- [M2 可视化压力测试](docs/learning/m2-visual-load-testing.md)：任务 API、参数上限和页面交互
 - [HTTP 接口与请求链路](docs/learning/http-api-and-request-flow.md)：理解 `/docs`、请求组成和服务调用路径
 - [岗位技术分析](三类技术岗位共通技术点分析.md)：目标岗位和能力背景
 
@@ -48,4 +51,4 @@ MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\m
 
 ## 下一步
 
-完成 M1 人工学习验收后，进入 M2 数据库持久化和本地可观测性。环境基线见 [learning-baseline.md](learning-baseline.md)。
+下一步完成 M2 端到端验收和可视化压测界面，再进入 M3 发布和回滚闭环。环境基线见 [learning-baseline.md](learning-baseline.md)。

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>压力测试 · OpsPilot</title>
+  <style>
+    :root { --ink:#17212b; --muted:#687582; --line:#dfe5e9; --panel:#fff; --bg:#f3f6f7; --green:#14804a; --amber:#a45b00; --red:#b42318; --blue:#1e5c9a; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--bg); font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    header { background:#17212b; color:#fff; padding:20px clamp(18px,4vw,56px); display:flex; align-items:center; justify-content:space-between; gap:20px; }
+    h1 { margin:0; font-size:22px; }
+    header p { margin:4px 0 0; color:#b9c5cd; }
+    nav { display:flex; gap:8px; flex-wrap:wrap; }
+    nav a { color:#d4e5f6; text-decoration:none; padding:7px 10px; border:1px solid #52616d; border-radius:4px; }
+    nav a[aria-current="page"] { color:#fff; border-color:#9fb8cd; background:#30404c; }
+    main { max-width:1120px; margin:0 auto; padding:26px clamp(18px,4vw,56px) 48px; }
+    .layout { display:grid; grid-template-columns:minmax(260px,330px) minmax(0,1fr); gap:18px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px; }
+    h2 { font-size:16px; margin:0 0 16px; }
+    label { display:block; font-weight:600; margin:15px 0 6px; }
+    select,input { width:100%; min-height:40px; padding:8px 10px; border:1px solid #b9c3ca; border-radius:4px; background:#fff; color:var(--ink); font:inherit; }
+    .input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .hint,.muted { color:var(--muted); font-size:12px; }
+    .actions { display:flex; gap:8px; margin-top:20px; }
+    button { min-height:40px; padding:8px 14px; border:0; border-radius:4px; background:var(--blue); color:#fff; font:inherit; font-weight:650; cursor:pointer; }
+    button:hover { background:#164a7d; }
+    button:disabled { cursor:not-allowed; opacity:.55; }
+    button.secondary { background:#e7edf1; color:var(--ink); }
+    button.danger { background:#a52b24; }
+    .notice { margin-top:14px; padding:10px 12px; border-left:3px solid #c18a35; background:#fff8e8; color:#5a471f; font-size:12px; }
+    .result-head { display:flex; justify-content:space-between; gap:16px; align-items:center; margin-bottom:14px; }
+    .state { display:inline-flex; align-items:center; gap:7px; font-weight:700; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#96a1a8; }
+    .state.running .dot { background:#1e72b7; animation:pulse 1s infinite alternate; }
+    .state.completed .dot,.state.stopped .dot { background:var(--green); }
+    .state.failed .dot { background:var(--red); }
+    @keyframes pulse { to { opacity:.35; } }
+    .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    .metric { min-width:0; padding:12px; border:1px solid var(--line); border-radius:4px; }
+    .metric span { display:block; color:var(--muted); font-size:12px; }
+    .metric strong { display:block; margin-top:4px; font-size:20px; overflow-wrap:anywhere; }
+    .progress { height:7px; margin:14px 0 6px; background:#e8edf0; border-radius:4px; overflow:hidden; }
+    .progress span { display:block; height:100%; width:0; background:#2873ad; transition:width .2s; }
+    canvas { display:block; width:100%; height:180px; border:1px solid var(--line); border-radius:4px; background:#fff; }
+    .chart-title { display:flex; justify-content:space-between; align-items:center; margin:18px 0 8px; }
+    .errors { margin:10px 0 0; color:var(--red); font-size:12px; overflow-wrap:anywhere; }
+    .empty { color:var(--muted); padding:48px 10px; text-align:center; }
+    @media (max-width:780px) { header { align-items:flex-start; flex-direction:column; } .layout { grid-template-columns:1fr; } .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>压力测试</h1><p>本地只读 HTTP 负载实验</p></div>
+    <nav aria-label="主导航"><a href="/dashboard">服务概览</a><a href="/load-test" aria-current="page">压力测试</a></nav>
+  </header>
+  <main>
+    <div class="layout">
+      <section class="panel" aria-labelledby="config-title">
+        <h2 id="config-title">测试配置</h2>
+        <label for="target">测试目标</label>
+        <select id="target">
+          <option value="health">进程健康检查 · /healthz</option>
+          <option value="readiness">依赖就绪检查 · /readyz</option>
+          <option value="activity">资源详情查询 · activity-001</option>
+        </select>
+        <div class="input-row">
+          <div><label for="duration">持续时间</label><select id="duration"><option value="5" selected>5 秒</option><option value="15">15 秒</option><option value="30">30 秒</option></select></div>
+          <div><label for="workers">并发数</label><select id="workers"><option>1</option><option selected>2</option><option>4</option><option>8</option></select></div>
+        </div>
+        <div class="hint">预设只读目标 · 最长 30 秒 · 最多 8 并发 · 每次最多 2,000 次请求</div>
+        <div class="actions"><button id="start" type="button">开始测试</button><button id="stop" class="danger" type="button" disabled>停止</button></div>
+        <div class="notice">仅用于本机演示。测试会增加服务请求和日志；请先确认应用健康，不要把本地结果当成线上容量指标。</div>
+      </section>
+
+      <section class="panel" aria-labelledby="result-title">
+        <div class="result-head"><h2 id="result-title">实时结果</h2><div class="state" id="state"><i class="dot"></i><span>等待测试</span></div></div>
+        <div class="progress" aria-label="测试进度"><span id="progress"></span></div>
+        <div class="muted" id="progress-label">选择参数后开始</div>
+        <div class="metrics" style="margin-top:14px">
+          <div class="metric"><span>请求总数</span><strong id="total">0</strong></div>
+          <div class="metric"><span>失败率</span><strong id="errors-rate">0%</strong></div>
+          <div class="metric"><span>吞吐量</span><strong id="rps">0 <small>req/s</small></strong></div>
+          <div class="metric"><span>P50 / P95</span><strong id="percentiles">0 / 0 <small>ms</small></strong></div>
+        </div>
+        <div class="chart-title"><strong>响应延迟</strong><span class="muted">最近最多 120 次 · 毫秒</span></div>
+        <canvas id="chart" width="720" height="180" aria-label="请求延迟曲线"></canvas>
+        <div class="errors" id="error-list" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let pollTimer = null;
+    async function api(path, options) {
+      const response = await fetch(path, options);
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.detail?.code || `HTTP ${response.status}`);
+      return body;
+    }
+    function setState(status) {
+      const labels = { running:'测试运行中', stopping:'正在停止', completed:'测试完成', stopped:'已停止', failed:'测试失败' };
+      $('state').className = `state ${status || ''}`;
+      $('state').querySelector('span').textContent = labels[status] || '等待测试';
+      const active = status === 'running' || status === 'stopping';
+      $('start').disabled = active;
+      $('stop').disabled = !active;
+      $('target').disabled = active;
+      $('duration').disabled = active;
+      $('workers').disabled = active;
+    }
+    function draw(samples) {
+      const canvas = $('chart');
+      const context = canvas.getContext('2d');
+      const ratio = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      context.scale(ratio, ratio);
+      context.clearRect(0, 0, width, height);
+      if (!samples?.length) return;
+      const max = Math.max(...samples, 10);
+      context.strokeStyle = '#dfe5e9';
+      context.beginPath(); context.moveTo(0, height - 1); context.lineTo(width, height - 1); context.stroke();
+      context.strokeStyle = '#1e5c9a'; context.lineWidth = 2; context.beginPath();
+      samples.forEach((value, index) => {
+        const x = samples.length === 1 ? width : index / (samples.length - 1) * width;
+        const y = height - 8 - value / max * (height - 18);
+        index ? context.lineTo(x, y) : context.moveTo(x, y);
+      });
+      context.stroke();
+    }
+    function render(task) {
+      if (!task) return;
+      setState(task.status);
+      $('total').textContent = task.total_requests;
+      $('errors-rate').textContent = `${task.error_rate_percent}%`;
+      $('rps').innerHTML = `${task.requests_per_second} <small>req/s</small>`;
+      $('percentiles').innerHTML = `${task.latency_ms.p50} / ${task.latency_ms.p95} <small>ms</small>`;
+      const progress = ['completed','stopped','failed'].includes(task.status) ? 100 : Math.min(100, task.elapsed_seconds / task.duration_seconds * 100);
+      $('progress').style.width = `${progress}%`;
+      $('progress-label').textContent = `${task.target_name} · ${task.elapsed_seconds}s / ${task.duration_seconds}s · ${task.workers} 并发`;
+      draw(task.latency_samples || []);
+      $('error-list').textContent = task.error_samples?.length ? `错误样例：${task.error_samples.join('；')}` : '';
+      if (['completed','stopped','failed'].includes(task.status)) clearInterval(pollTimer);
+    }
+    async function refresh() {
+      try { const data = await api('/api/v1/load-tests/current'); render(data.task); }
+      catch (error) { $('progress-label').textContent = `状态读取失败：${error.message}`; }
+    }
+    $('start').addEventListener('click', async () => {
+      $('error-list').textContent = '';
+      try {
+        const data = await api('/api/v1/load-tests', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ target:$('target').value, duration_seconds:Number($('duration').value), workers:Number($('workers').value) }) });
+        render(data); clearInterval(pollTimer); pollTimer = setInterval(refresh, 500);
+      } catch (error) { $('error-list').textContent = `无法启动：${error.message}`; }
+    });
+    $('stop').addEventListener('click', async () => {
+      try { render(await api('/api/v1/load-tests/stop', { method:'POST' })); }
+      catch (error) { $('error-list').textContent = `停止失败：${error.message}`; }
+    });
+    window.addEventListener('resize', () => refresh());
+    refresh();
+  </script>
+</body>
+</html>

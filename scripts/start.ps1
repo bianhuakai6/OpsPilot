@@ -26,8 +26,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "FastAPI or Uvicorn is missing. Install the project dependencies first."
 }
 
-# 默认完整模式会先确保本地 MySQL/Redis 可用；memory 仅用于显式轻量开发。
-# Ensure local dependencies before starting the full delivery mode.
+# Full mode starts local MySQL and Redis; memory mode is for lightweight development.
 if ($Mode -eq "full") {
     $dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
     if ($null -eq $dockerCommand) {
@@ -44,11 +43,13 @@ if ($Mode -eq "full") {
 
     $composeDeadline = (Get-Date).AddSeconds(90)
     while ($true) {
-        $services = & docker compose ps --format json | ConvertFrom-Json
-        $mysql = $services | Where-Object { $_.Service -eq "mysql" } | Select-Object -First 1
-        $redis = $services | Where-Object { $_.Service -eq "redis" } | Select-Object -First 1
-        $mysqlHealthy = $null -ne $mysql -and $mysql.Health -eq "healthy"
-        $redisHealthy = $null -ne $redis -and $redis.Health -eq "healthy"
+        # Compose JSON is newline-delimited; use compact text for reliable parsing in Windows PowerShell.
+        $serviceStatuses = & docker compose ps --format '{{.Service}}|{{.Health}}'
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not read Docker Compose service health. Check 'docker compose ps' and retry."
+        }
+        $mysqlHealthy = $serviceStatuses -contains "mysql|healthy"
+        $redisHealthy = $serviceStatuses -contains "redis|healthy"
         if ($mysqlHealthy -and $redisHealthy) { break }
         if ((Get-Date) -ge $composeDeadline) {
             & docker compose ps

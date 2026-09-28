@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from app.main import Activity, activities, app, reset_state
+from app.routes import health
 
 
 client = TestClient(app)
@@ -18,6 +19,19 @@ def test_healthz_returns_ok() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_readyz_reports_disabled_dependencies(monkeypatch) -> None:
+    monkeypatch.setattr(health, "database_engine", None)
+    monkeypatch.setattr(health, "redis_client", None)
+
+    response = client.get("/readyz")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "dependencies": {"mysql": "disabled", "redis": "disabled"},
+    }
 
 
 def test_get_activity_returns_current_capacity() -> None:

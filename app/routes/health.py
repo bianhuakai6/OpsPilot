@@ -26,7 +26,8 @@ def healthz() -> dict[str, str]:
 
 # 服务就绪检查
 @router.get("/readyz")
-def readyz() -> dict[str, str]:
+def readyz() -> dict[str, object]:
+    dependencies = {"mysql": "disabled", "redis": "disabled"}
     if database_engine is not None:
         try:
             available = check_database(database_engine)
@@ -34,6 +35,7 @@ def readyz() -> dict[str, str]:
             raise HTTPException(status_code=503, detail={"code": "database_unavailable"}) from exc
         if not available:
             raise HTTPException(status_code=503, detail={"code": "database_unavailable"})
+        dependencies["mysql"] = "connected"
     if redis_client is not None:
         try:
             available = check_redis(redis_client)
@@ -41,4 +43,5 @@ def readyz() -> dict[str, str]:
             raise HTTPException(status_code=503, detail={"code": "redis_unavailable"}) from exc
         if not available:
             raise HTTPException(status_code=503, detail={"code": "redis_unavailable"})
-    return {"status": "ready"}
+        dependencies["redis"] = "connected"
+    return {"status": "ready", "dependencies": dependencies}

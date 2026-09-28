@@ -119,4 +119,4 @@ $env:OPSPILOT_HOST = $effectiveHost
 $env:OPSPILOT_PORT = [string]$effectivePort
 $env:OPSPILOT_STORAGE = if ($Mode -eq "full") { "mysql" } else { "memory" }
 $env:OPSPILOT_REDIS_ENABLED = if ($Mode -eq "full") { "true" } else { "false" }
-& $python -m uvicorn app.main:app --host $effectiveHost --port $effectivePort
+& $python -m uvicorn app.main:app --host $effectiveHost --port $effectivePort --no-access-log

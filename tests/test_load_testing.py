@@ -30,6 +30,8 @@ def test_load_test_runs_and_reports_metrics(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert result is not None
     assert result["status"] == "completed"
+    assert result["completion_reason"] == "duration_elapsed"
+    assert result["elapsed_seconds"] >= 0.9
     assert result["total_requests"] > 0
     assert result["failed_requests"] == 0
     assert result["latency_ms"]["p95"] == 4.0

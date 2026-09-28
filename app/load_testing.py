@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from threading import Event, Lock, Thread
 import time
 from urllib.error import HTTPError, URLError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from uuid import uuid4
 
 # 压测目标固定为只读接口，避免演示页面触发业务写入。
@@ -14,7 +14,7 @@ LOAD_TEST_TARGETS = {
 }
 MAX_DURATION_SECONDS = 30
 MAX_WORKERS = 8
-MAX_REQUESTS = 2000
+MAX_REQUESTS = 100_000
 
 
 def _percentile(values: list[float], percentage: float) -> float:
@@ -28,7 +28,11 @@ def _percentile(values: list[float], percentage: float) -> float:
 def _request_once(path: str) -> tuple[float, int, str | None]:
     started = time.perf_counter()
     try:
-        with urlopen(f"http://127.0.0.1:{_server_port()}{path}", timeout=3) as response:
+        request = Request(
+            f"http://127.0.0.1:{_server_port()}{path}",
+            headers={"X-OpsPilot-Load-Test": "true"},
+        )
+        with urlopen(request, timeout=3) as response:
             response.read()
             return (time.perf_counter() - started) * 1000, response.status, None
     except HTTPError as error:
@@ -72,6 +76,7 @@ class LoadTestManager:
                 "path": path,
                 "duration_seconds": duration,
                 "workers": workers,
+                "completion_reason": None,
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "_started_monotonic": time.monotonic(),
                 "elapsed_seconds": 0.0,
@@ -119,6 +124,7 @@ class LoadTestManager:
         latencies: list[float] = []
         statuses: list[int] = []
         errors: list[str] = []
+        last_progress_at = started
         try:
             with ThreadPoolExecutor(max_workers=workers) as executor:
                 pending = {executor.submit(_request_once, path) for _ in range(min(workers, MAX_REQUESTS))}
@@ -130,10 +136,12 @@ class LoadTestManager:
                         statuses.append(status)
                         if error and len(errors) < 5:
                             errors.append(error)
-                        self._publish_progress(task_id, started, duration, latencies, statuses, errors)
                         if time.monotonic() < deadline and not stop_event.is_set() and len(statuses) + len(pending) < MAX_REQUESTS:
                             pending.add(executor.submit(_request_once, path))
-                        self._publish_progress(task_id, started, duration, latencies, statuses, errors)
+                        now = time.monotonic()
+                        if now - last_progress_at >= 0.5 or now >= deadline or not pending:
+                            self._publish_progress(task_id, started, duration, latencies, statuses, errors)
+                            last_progress_at = now
 
             elapsed = max(time.monotonic() - started, 0.001)
             successes = sum(200 <= status < 400 for status in statuses)
@@ -143,6 +151,11 @@ class LoadTestManager:
                     return
                 self._task.update({
                     "status": "stopped" if stop_event.is_set() else "completed",
+                    "completion_reason": (
+                        "user_stopped" if stop_event.is_set()
+                        else "request_limit_reached" if len(statuses) >= MAX_REQUESTS
+                        else "duration_elapsed"
+                    ),
                     "finished_at": datetime.now(timezone.utc).isoformat(),
                     "elapsed_seconds": round(elapsed, 2),
                     "total_requests": len(statuses),

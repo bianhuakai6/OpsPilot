@@ -68,9 +68,9 @@
           <div><label for="duration">持续时间</label><select id="duration"><option value="5" selected>5 秒</option><option value="15">15 秒</option><option value="30">30 秒</option></select></div>
           <div><label for="workers">并发数</label><select id="workers"><option>1</option><option selected>2</option><option>4</option><option>8</option></select></div>
         </div>
-        <div class="hint">预设只读目标 · 最长 30 秒 · 最多 8 并发 · 每次最多 2,000 次请求</div>
+        <div class="hint">预设只读目标 · 最长 30 秒 · 最多 8 并发 · 每次最多 100,000 次请求</div>
         <div class="actions"><button id="start" type="button">开始测试</button><button id="stop" class="danger" type="button" disabled>停止</button></div>
-        <div class="notice">仅用于本机演示。测试会增加服务请求和日志；请先确认应用健康，不要把本地结果当成线上容量指标。</div>
+        <div class="notice">仅用于本机演示。压测流量会计入指标，但不逐条写应用日志；请先确认应用健康，不要把本地结果当成线上容量指标。</div>
       </section>
 
       <section class="panel" aria-labelledby="result-title">
@@ -140,7 +140,8 @@
       $('percentiles').innerHTML = `${task.latency_ms.p50} / ${task.latency_ms.p95} <small>ms</small>`;
       const progress = ['completed','stopped','failed'].includes(task.status) ? 100 : Math.min(100, task.elapsed_seconds / task.duration_seconds * 100);
       $('progress').style.width = `${progress}%`;
-      $('progress-label').textContent = `${task.target_name} · ${task.elapsed_seconds}s / ${task.duration_seconds}s · ${task.workers} 并发`;
+      const limitNote = task.completion_reason === 'request_limit_reached' ? ' · 已达到请求安全上限' : '';
+      $('progress-label').textContent = `${task.target_name} · ${task.elapsed_seconds}s / ${task.duration_seconds}s · ${task.workers} 并发${limitNote}`;
       draw(task.latency_samples || []);
       $('error-list').textContent = task.error_samples?.length ? `错误样例：${task.error_samples.join('；')}` : '';
       if (['completed','stopped','failed'].includes(task.status)) clearInterval(pollTimer);

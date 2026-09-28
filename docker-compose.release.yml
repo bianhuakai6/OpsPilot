@@ -1,0 +1,28 @@
+services:
+  api:
+    image: ${OPSPILOT_IMAGE:?Set OPSPILOT_IMAGE to a built OpsPilot image tag.}
+    container_name: opspilot-api
+    restart: unless-stopped
+    environment:
+      OPSPILOT_APP_NAME: OpsPilot
+      OPSPILOT_APP_VERSION: ${OPSPILOT_APP_VERSION:-0.1.0}
+      OPSPILOT_ENV: local-container
+      OPSPILOT_HOST: 0.0.0.0
+      OPSPILOT_PORT: 8000
+      OPSPILOT_STORAGE: mysql
+      OPSPILOT_REDIS_ENABLED: "true"
+      OPSPILOT_DATABASE_URL: mysql+pymysql://${MYSQL_USER:-opspilot}:${MYSQL_PASSWORD:-opspilot_local_password}@mysql:3306/${MYSQL_DATABASE:-opspilot}?charset=utf8mb4
+      OPSPILOT_REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${OPSPILOT_PORT:-8000}:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s

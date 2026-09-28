@@ -1,13 +1,5 @@
 FROM python:3.13-slim
 
-ARG APP_VERSION=dev
-ARG VCS_REF=unknown
-
-LABEL org.opencontainers.image.title="OpsPilot" \
-      org.opencontainers.image.description="Local-first application delivery and intelligent operations platform" \
-      org.opencontainers.image.version="${APP_VERSION}" \
-      org.opencontainers.image.revision="${VCS_REF}"
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     OPSPILOT_HOST=0.0.0.0 \
@@ -27,6 +19,15 @@ RUN pip install --no-cache-dir \
     prometheus-client==0.21.1
 
 COPY app ./app
+
+ARG APP_VERSION=dev
+ARG VCS_REF=unknown
+
+# 镜像元数据放在代码层之后，提交号变化不会使依赖安装层失去缓存。
+LABEL org.opencontainers.image.title="OpsPilot" \
+      org.opencontainers.image.description="Local-first application delivery and intelligent operations platform" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${VCS_REF}"
 
 EXPOSE 8000
 

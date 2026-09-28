@@ -199,8 +199,9 @@ class LoadTestManager:
                 "requests_per_second": round(len(statuses) / elapsed, 2),
                 "error_rate_percent": round(failures / len(statuses) * 100, 2) if statuses else 0.0,
                 "latency_ms": {
-                    "p50": _percentile(latencies, 50),
-                    "p95": _percentile(latencies, 95),
+                    # 实时阶段只计算最近样本，避免高请求量下频繁排序全量数据。
+                    "p50": _percentile(latencies[-2000:], 50),
+                    "p95": _percentile(latencies[-2000:], 95),
                     "max": round(max(latencies), 2) if latencies else 0.0,
                 },
                 "latency_samples": [round(value, 2) for value in latencies[-120:]],

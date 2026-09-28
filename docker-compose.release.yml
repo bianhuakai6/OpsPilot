@@ -1,6 +1,7 @@
 services:
   api:
     image: ${OPSPILOT_IMAGE:?Set OPSPILOT_IMAGE to a built OpsPilot image tag.}
+    pull_policy: never
     container_name: opspilot-api
     restart: unless-stopped
     environment:

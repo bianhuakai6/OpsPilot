@@ -5,7 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $scriptPath = (Resolve-Path $MyInvocation.MyCommand.Path).Path
-$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptPath)
+$scriptDirectory = Split-Path -Parent $scriptPath
+$repoRoot = Split-Path -Parent $scriptDirectory
 Set-Location $repoRoot
 $composeArguments = @("-f", "docker-compose.yml", "-f", "docker-compose.release.yml")
 
@@ -33,7 +34,7 @@ if ($LASTEXITCODE -ne 0) {
 $image = "opspilot:$version-$revision"
 
 # 先构建当前提交对应的镜像，构建脚本内含默认测试门禁。
-& powershell -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\build-image.ps1" -Tag "$version-$revision"
+& powershell -NoProfile -ExecutionPolicy Bypass -File "$scriptDirectory\build-image.ps1" -Tag "$version-$revision"
 if ($LASTEXITCODE -ne 0) {
     throw "Image build failed. Deployment was not started."
 }

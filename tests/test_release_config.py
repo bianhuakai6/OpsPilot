@@ -18,5 +18,5 @@ def test_release_script_has_deploy_status_stop_and_port_protection() -> None:
     assert 'ValidateSet("deploy", "status", "stop")' in content
     assert "Get-NetTCPConnection -LocalPort 8000" in content
     assert "build-image.ps1" in content
-    assert '& "$scriptDirectory\\build-image.ps1"' in content
+    assert "& .\\scripts\\build-image.ps1" in content
     assert "Release succeeded" in content

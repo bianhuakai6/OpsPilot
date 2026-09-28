@@ -34,7 +34,7 @@ if ($LASTEXITCODE -ne 0) {
 $image = "opspilot:$version-$revision"
 
 # 先构建当前提交对应的镜像，构建脚本内含默认测试门禁。
-& "$scriptDirectory\build-image.ps1" -Tag "$version-$revision"
+& .\scripts\build-image.ps1 -Tag "$version-$revision"
 if ($LASTEXITCODE -ne 0) {
     throw "Image build failed. Deployment was not started."
 }

@@ -10,15 +10,22 @@ $repoRoot = Split-Path -Parent $scriptDirectory
 Set-Location $repoRoot
 $composeArguments = @("-f", "docker-compose.yml", "-f", "docker-compose.release.yml")
 
+# Compose requires image variables even for status and stop actions.
+$env:OPSPILOT_IMAGE = "opspilot:local-placeholder"
+$env:OPSPILOT_APP_VERSION = "local"
+
 if ($Action -eq "status") {
     & docker compose @composeArguments ps
     exit $LASTEXITCODE
 }
 
 if ($Action -eq "stop") {
-    # 只停止 API 容器，保留 MySQL/Redis 和数据卷供下一次发布复用。
-    & docker compose @composeArguments stop api
-    exit $LASTEXITCODE
+    # Stop only the API container and keep data services running.
+    & docker stop opspilot-api 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "API container is already stopped."
+    }
+    exit 0
 }
 
 $portInUse = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
@@ -33,7 +40,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 $image = "opspilot:$version-$revision"
 
-# 发布只接收已构建镜像：构建测试失败时不能进入部署阶段。
+# Deployment accepts only an image that was built successfully.
 & docker image inspect $image *> $null
 if ($LASTEXITCODE -ne 0) {
     throw "Image $image was not found. Run scripts/build-image.ps1 first; deployment was not started."
@@ -57,7 +64,7 @@ while ((Get-Date) -lt $deadline) {
                 exit 0
             }
         } catch {
-            # Container health remains the primary wait condition; retry until timeout.
+            # Retry while the container is starting.
         }
     }
     Start-Sleep -Seconds 2

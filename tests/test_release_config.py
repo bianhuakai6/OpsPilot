@@ -19,4 +19,6 @@ def test_release_script_has_deploy_status_stop_and_port_protection() -> None:
     assert "Get-NetTCPConnection -LocalPort 8000" in content
     assert "docker image inspect $image" in content
     assert "deployment was not started" in content
+    assert "opspilot:local-placeholder" in content
+    assert "docker stop opspilot-api" in content
     assert "Release succeeded" in content

@@ -2,7 +2,21 @@
 
 ## 使用方式
 
-在 Windows 资源管理器中双击项目根目录的 `start-project.bat`。默认按完整本地交付模式启动：检查 Docker Engine，执行 `docker compose up -d` 启动 MySQL 和 Redis，等待两者健康后，再以 MySQL + Redis 配置启动 FastAPI。随后显示验收地址：
+### 推荐：仅依赖 Git 和 Docker Desktop 的容器化方式
+
+在 Windows 上克隆仓库并启动 Docker Desktop 后，双击项目根目录的 `start-container.bat`。该入口会在 Docker 测试镜像中执行 `pytest`，测试通过后构建带 Git SHA 的 API 镜像，启动 MySQL、Redis 和 API 容器，并等待 `/readyz` 就绪。此流程不要求宿主机安装 Python、pytest 或项目依赖。
+
+首次运行需要下载 Python 基础镜像和依赖，耗时取决于网络；Docker 会缓存构建层，后续启动会快很多。该入口适用于 Windows + Docker Desktop，API 和依赖都运行在容器中。
+
+也可以在 PowerShell 中执行：
+
+```powershell
+.\scripts\container-start.ps1
+```
+
+### 原生开发模式
+
+在 Windows 资源管理器中双击项目根目录的 `start-project.bat`。此模式要求本机安装 Python 3.13 和项目依赖；它会用 Docker 启动 MySQL、Redis，再由本机 Python/Uvicorn 运行 API。随后显示验收地址：
 
 - API 文档：`http://127.0.0.1:8000/docs`
 - 健康检查：`http://127.0.0.1:8000/healthz`

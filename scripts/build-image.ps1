@@ -15,19 +15,11 @@ if ([string]::IsNullOrWhiteSpace($repoRoot)) {
 }
 Set-Location $repoRoot
 
-# 构建前先运行默认测试，避免为已知失败的代码创建镜像。
-$ErrorActionPreference = "Continue"
-& "C:\Windows\py.exe" -3.13 -m pytest -q
-$testExitCode = $LASTEXITCODE
-$ErrorActionPreference = "Stop"
-if ($testExitCode -ne 0) {
-    throw "Tests failed. The image was not built."
-}
-
-$version = & "C:\Windows\py.exe" -3.13 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])"
-if ($LASTEXITCODE -ne 0) {
+$versionLine = Select-String -Path "pyproject.toml" -Pattern '^version\s*=\s*"([^"]+)"'
+if ($null -eq $versionLine) {
     throw "Could not read the project version from pyproject.toml."
 }
+$version = [regex]::Match($versionLine.Line, '"([^"]+)"').Groups[1].Value
 $revision = & git rev-parse --short HEAD
 if ($LASTEXITCODE -ne 0) {
     throw "Could not read the current Git revision. Commit or repair the repository before building."
@@ -35,6 +27,16 @@ if ($LASTEXITCODE -ne 0) {
 if ([string]::IsNullOrWhiteSpace($Tag)) {
     $Tag = "$version-$revision"
 }
+
+# Tests run in Docker, so the build machine does not need Python or pytest.
+$testImage = "opspilot:test-$revision"
+Write-Host "Running tests in Docker: $testImage..." -ForegroundColor Cyan
+& docker build --file Dockerfile.test --tag $testImage .
+if ($LASTEXITCODE -ne 0) {
+    & docker image rm $testImage *> $null
+    throw "Tests failed in Docker. The application image was not built."
+}
+& docker image rm $testImage *> $null
 
 $image = "opspilot:$Tag"
 Write-Host "Building $image from revision $revision..." -ForegroundColor Cyan

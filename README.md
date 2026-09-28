@@ -1,6 +1,6 @@
 # OpsPilot
 
-本地启动：双击 `start-project.bat`，或在 PowerShell 中运行 `.\scripts\start.ps1`。启动后访问 `http://127.0.0.1:8000/docs`；脚本细节见 [本地启动说明](docs/learning/local-startup.md)。
+本地容器化一键启动：安装并启动 Docker Desktop 后，双击 `start-container.bat`。它会在容器内运行测试、构建镜像并启动 API、MySQL、Redis；不要求本机安装 Python。启动后访问 `http://127.0.0.1:8000/dashboard`。原生开发模式仍可双击 `start-project.bat`，但需要本机 Python 环境。详细说明见 [本地启动说明](docs/learning/local-startup.md)。
 运维控制台：访问 `http://127.0.0.1:8000/dashboard`，页面会读取健康检查、依赖状态、活动容量和自动巡检结果。
 
 MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\mysql.ps1 -Action up`，查看状态运行 `-Action status`。

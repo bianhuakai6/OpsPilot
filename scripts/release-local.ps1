@@ -33,7 +33,11 @@ if ($null -ne $portInUse) {
     throw "Port 8000 is already in use. Stop the native OpsPilot window with Ctrl+C, then run this release command again."
 }
 
-$version = & "C:\Windows\py.exe" -3.13 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])"
+$versionLine = Select-String -Path "pyproject.toml" -Pattern '^version\s*=\s*"([^"]+)"'
+if ($null -eq $versionLine) {
+    throw "Could not read the project version from pyproject.toml."
+}
+$version = [regex]::Match($versionLine.Line, '"([^"]+)"').Groups[1].Value
 $revision = & git rev-parse --short HEAD
 if ($LASTEXITCODE -ne 0) {
     throw "Could not read the current Git revision. Commit or repair the repository before deployment."

@@ -1,0 +1,27 @@
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /workspace
+
+# 测试镜像只用于构建时验收，不作为运行服务交付。
+RUN pip install --no-cache-dir \
+    fastapi==0.115.6 \
+    "uvicorn[standard]==0.34.0" \
+    SQLAlchemy==2.0.36 \
+    PyMySQL==1.1.1 \
+    cryptography==50.0.1 \
+    redis==5.2.1 \
+    prometheus-client==0.21.1 \
+    pytest==8.3.4 \
+    httpx==0.28.1
+
+COPY pyproject.toml ./
+COPY docker-compose.yml docker-compose.release.yml ./
+COPY Dockerfile Dockerfile.test ./
+COPY app ./app
+COPY tests ./tests
+COPY scripts ./scripts
+
+RUN pytest -q

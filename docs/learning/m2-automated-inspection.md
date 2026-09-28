@@ -44,3 +44,21 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/inspections/run
 ```
 
 内存模式下数据库和 Redis 会显示 `skipped`；MySQL/Redis 启用后会显示实际连接证据。未来控制台可以按 `severity` 和 `status` 展示风险，Agent 可以基于 `evidence` 生成分析，而不是凭空猜测。
+
+## 导出 JSON 和可读报告
+
+服务运行后，在项目根目录执行：
+
+```powershell
+python scripts/run_inspection.py
+```
+
+脚本会调用巡检 API，并在 `reports/generated/` 保存同一份结果的 `.json` 和 `.md` 文件。JSON 适合后续自动处理；Markdown 方便人工查看或作为演练记录。该目录已被 `.gitignore` 排除，日常巡检报告不会误提交到代码仓库。
+
+若服务运行在其他地址或需要自定义输出目录：
+
+```powershell
+python scripts/run_inspection.py --url http://127.0.0.1:8001 --output reports/generated
+```
+
+接口不可达或响应格式不符时脚本会返回非零状态且不生成报告；巡检本身有 `fail` 项时仍保存证据，并返回状态码 `2`，便于后续脚本或任务计划据此判断。若要每日自动执行，可用 Windows“任务计划程序”启动 Python 并传入此脚本；当前项目只提供可调用脚本，不会替用户创建或修改系统任务。

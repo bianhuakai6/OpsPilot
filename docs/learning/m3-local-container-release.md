@@ -81,3 +81,19 @@ redis:6379
 ## 8. 当前还没有做什么
 
 当前是本地容器化发布，不等于完整生产发布系统。还没有远程 CI Runner、发布记录持久化、自动回滚、灰度发布和 Kubernetes 部署。这些属于后续 M3/M4/M6 的范围，不能在当前阶段虚构为已完成能力。
+
+## 9. 镜像清理规则
+
+正式镜像使用 `opspilot:版本-Git短SHA`，用于审计和回滚，默认保留。临时验证镜像使用 `verification-*` 标签，验证结束后可以清理。
+
+项目提供 `scripts/cleanup-images.ps1`：
+
+```powershell
+# 只预览，不删除
+.\scripts\cleanup-images.ps1
+
+# 明确确认后，删除 verification-* 临时标签
+.\scripts\cleanup-images.ps1 -Apply
+```
+
+脚本不会匹配带版本和 Git SHA 的正式镜像，也不会删除正在运行的容器镜像。清理前仍应先查看预览结果。

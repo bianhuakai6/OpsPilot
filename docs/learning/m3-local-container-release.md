@@ -90,6 +90,8 @@ redis:6379
 
 镜像构建前会运行 `scripts/test-release-history.ps1`，用唯一临时文件验证 JSON 追加、核心字段和敏感信息边界；完成后仅删除该测试脚本自己创建的临时文件。
 
+本次验收中，端口 8000 被旧 API 占用时，脚本没有覆盖服务，留下 `failed/port_check` 记录；随后停止旧 API、发布 `opspilot:0.1.0-9d59649`，得到 `success/complete/ready` 记录。API、MySQL、Redis 均 healthy，`/readyz` 为 ready，Dashboard 返回 HTTP 200。容器内测试为 `42 passed, 4 skipped`；4 项 MySQL 集成测试需显式启用。
+
 ## 10. 镜像清理规则
 
 正式镜像使用 `opspilot:版本-Git短SHA`，用于审计和回滚，默认保留。临时验证镜像使用 `verification-*` 标签，验证结束后可以清理。

@@ -61,11 +61,11 @@ docker compose -f docker-compose.yml -f docker-compose.release.yml down
 
 | 服务 | 容器 | 镜像 | 状态 | 主机端口 |
 | --- | --- | --- | --- | --- |
-| API | `opspilot-api` | `opspilot:0.1.0-fd7dd96` | healthy | 8000 |
+| API | `opspilot-api` | `opspilot:0.1.0-9d59649` | healthy | 8000 |
 | MySQL | `opspilot-mysql` | `mysql:8.4` | healthy | 3306 |
 | Redis | `opspilot-redis` | `redis:7.4` | healthy | 6379 |
 
-最近一次完整容器启动验收记录：Docker 内测试 `39 passed, 4 skipped`；API readiness 显示 ready，MySQL/Redis 为 connected。当前页面在 `http://127.0.0.1:8000/dashboard`。这证明当前设备上的该版本能启动，不等同于已在另一台机器验收；新机器仍要实际双击启动并复核页面和容器状态。
+最近一次完整容器测试：`42 passed, 4 skipped`（跳过项是需显式启用的 MySQL 集成测试）。2026-10-09 已对 `opspilot:0.1.0-9d59649` 完成实际部署成功验收：API readiness 为 ready，MySQL/Redis 为 connected，Dashboard 返回 HTTP 200。另验证了端口占用时拒绝覆盖并记录失败阶段。当前页面在 `http://127.0.0.1:8000/dashboard`。这证明当前设备上的该版本能启动，不等同于已在另一台机器验收；新机器仍要实际双击启动并复核页面和容器状态。
 
 仓库中还留有若干带正式 Git SHA 的历史镜像，作为构建/回滚记录保留是有意行为，不代表它们正在运行。当前运行 API 使用 `0.1.0-fd7dd96`。临时测试镜像应按 `scripts/cleanup-images.ps1` 的预览结果逐一判断，不能批量删除正式标签。
 
@@ -76,7 +76,7 @@ README 将项目标为 M3（发布与回滚闭环）进行中。M1 业务闭环�
 1. 健康检查失败处理：验证发布未就绪时能清楚报告、保留诊断证据，并有明确的恢复路径。
 2. 回滚演练：用上一个已验证镜像恢复，验证应用健康，并留下演练记录。
 
-发布记录保存在被 Git 忽略的 `data/release-history.jsonl`，记录时间、版本、Git SHA、镜像、结果、失败阶段和就绪状态，不保存异常原文。它是本机数据，不随仓库跨设备同步。2026-10-09 验证过端口占用时的安全拒绝路径：记录结果为 `failed/port_check`，原有 API 仍 ready；完整成功发布路径还需后续在受控发布验证中确认。
+发布记录保存在被 Git 忽略的 `data/release-history.jsonl`，记录时间、版本、Git SHA、镜像、结果、失败阶段和就绪状态，不保存异常原文。它是本机数据，不随仓库跨设备同步。2026-10-09 已验证成功发布和端口冲突拒绝两条路径，结果分别为 `success/complete/ready` 与 `failed/port_check/not_checked`。
 
 然后再按 `DEVELOPMENT_PLAN.md` 评估 M4 故障演练与 SLO。不要跳过本地发布/回滚闭环，提前扩展云或 Kubernetes 范围。
 

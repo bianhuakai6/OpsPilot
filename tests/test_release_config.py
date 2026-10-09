@@ -24,6 +24,20 @@ def test_release_script_has_deploy_status_stop_and_port_protection() -> None:
     assert "Release succeeded" in content
 
 
+def test_release_history_is_written_without_sensitive_error_details() -> None:
+    release_script = Path("scripts/release-local.ps1").read_text(encoding="utf-8")
+    history_module = Path("scripts/ReleaseHistory.psm1").read_text(encoding="utf-8")
+    build_script = Path("scripts/build-image.ps1").read_text(encoding="utf-8")
+
+    assert '"data\\release-history.jsonl"' in release_script
+    assert "Add-OpsPilotReleaseRecord" in release_script
+    assert "recorded_at_utc" in history_module
+    assert "git_sha" in history_module
+    assert "readiness" in history_module
+    assert "failureMessage" not in history_module
+    assert "test-release-history.ps1" in build_script
+
+
 def test_container_first_run_does_not_require_host_python() -> None:
     build_script = Path("scripts/build-image.ps1").read_text(encoding="utf-8")
     release_script = Path("scripts/release-local.ps1").read_text(encoding="utf-8")

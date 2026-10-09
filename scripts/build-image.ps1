@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Tag
 )
 
@@ -29,6 +29,13 @@ if ([string]::IsNullOrWhiteSpace($Tag)) {
 }
 
 # Tests run in Docker, so the build machine does not need Python or pytest.
+$releaseHistoryTest = Join-Path $scriptDirectory "test-release-history.ps1"
+Write-Host "Validating release history behavior..." -ForegroundColor Cyan
+& powershell -NoProfile -ExecutionPolicy Bypass -File $releaseHistoryTest
+if ($LASTEXITCODE -ne 0) {
+    throw "Release history validation failed. The application image was not built."
+}
+
 $testImage = "opspilot:test-$revision"
 Write-Host "Running tests in Docker: $testImage..." -ForegroundColor Cyan
 & docker build --file Dockerfile.test --tag $testImage .

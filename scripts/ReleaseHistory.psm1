@@ -13,7 +13,10 @@ function Add-OpsPilotReleaseRecord {
         [string]$GitSha,
         [string]$Image,
         [string]$Stage,
-        [string]$Readiness = "not_checked"
+        [string]$Readiness = "not_checked",
+
+        [ValidateSet("deploy", "rollback")]
+        [string]$Action = "deploy"
     )
 
     $parentDirectory = Split-Path -Parent $Path
@@ -23,7 +26,7 @@ function Add-OpsPilotReleaseRecord {
 
     $record = [ordered]@{
         recorded_at_utc = [DateTimeOffset]::UtcNow.ToString("o")
-        action = "deploy"
+        action = $Action
         status = $Status
         version = $Version
         git_sha = $GitSha
@@ -38,4 +41,31 @@ function Add-OpsPilotReleaseRecord {
 
 }
 
-Export-ModuleMember -Function Add-OpsPilotReleaseRecord
+# 回滚目标从成功部署记录中选择，不依赖本机镜像列表猜测版本关系。
+function Get-OpsPilotRollbackTarget {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentImage
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CurrentImage)) {
+        throw "The currently running API image could not be identified."
+    }
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $null
+    }
+
+    $records = Get-Content -LiteralPath $Path | ForEach-Object {
+        try { ConvertFrom-Json $_ } catch { $null }
+    }
+    return $records | Where-Object {
+        $_.action -eq "deploy" -and $_.status -eq "success" -and
+        -not [string]::IsNullOrWhiteSpace($_.image) -and $_.image -ne $CurrentImage
+    } | Select-Object -Last 1
+}
+
+Export-ModuleMember -Function Add-OpsPilotReleaseRecord, Get-OpsPilotRollbackTarget

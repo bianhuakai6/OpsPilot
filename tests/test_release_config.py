@@ -15,13 +15,16 @@ def test_release_compose_uses_a_versioned_api_image_and_dependency_checks() -> N
 def test_release_script_has_deploy_status_stop_and_port_protection() -> None:
     content = Path("scripts/release-local.ps1").read_text(encoding="utf-8")
 
-    assert 'ValidateSet("deploy", "status", "stop")' in content
+    assert 'ValidateSet("deploy", "status", "stop", "rollback")' in content
     assert "Get-NetTCPConnection -LocalPort 8000" in content
     assert "docker image inspect $image" in content
     assert "deployment was not started" in content
     assert "opspilot:local-placeholder" in content
     assert "docker stop opspilot-api" in content
     assert "Release succeeded" in content
+    assert "Rollback succeeded" in content
+    assert "rollback_precheck" in content
+    assert "rollback_readiness_check" in content
 
 
 def test_release_history_is_written_without_sensitive_error_details() -> None:

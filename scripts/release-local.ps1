@@ -1,5 +1,5 @@
 ﻿param(
-    [ValidateSet("deploy", "status", "stop")]
+    [ValidateSet("deploy", "status", "stop", "rollback")]
     [string]$Action = "deploy"
 )
 
@@ -28,6 +28,64 @@ if ($Action -eq "stop") {
         Write-Host "API container is already stopped."
     }
     exit 0
+}
+
+if ($Action -eq "rollback") {
+    # 回滚只选择最近一次成功记录中的正式镜像，不重新构建，也不拉取远程镜像。
+    $currentImage = (& docker inspect --format '{{.Config.Image}}' opspilot-api 2>$null | Out-String).Trim()
+    $successfulRecord = $null
+    $status = "failed"
+    $stage = "rollback_precheck"
+    $readiness = "not_checked"
+    try {
+        $successfulRecord = Get-OpsPilotRollbackTarget -Path $releaseHistoryPath -CurrentImage $currentImage
+        if ($null -eq $successfulRecord) {
+            throw "No previous successful release is available for rollback."
+        }
+        $stage = "rollback_image_check"
+        & docker image inspect $successfulRecord.image *> $null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Rollback image $($successfulRecord.image) is not available locally."
+        }
+
+        $env:OPSPILOT_IMAGE = $successfulRecord.image
+        $env:OPSPILOT_APP_VERSION = $successfulRecord.version
+        $stage = "rollback_compose_start"
+        & docker compose @composeArguments up -d --no-build
+        if ($LASTEXITCODE -ne 0) { throw "Rollback container startup failed." }
+        $stage = "rollback_readiness_check"
+        $deadline = (Get-Date).AddSeconds(90)
+        while ((Get-Date) -lt $deadline) {
+            $services = & docker compose @composeArguments ps --format '{{.Service}}|{{.Health}}|{{.State}}'
+            if ($services -contains "api|healthy|running") {
+                try {
+                    $ready = Invoke-RestMethod -Uri "http://127.0.0.1:8000/readyz" -TimeoutSec 5
+                    if ($ready.status -eq "ready" -and $ready.dependencies.mysql -eq "connected" -and $ready.dependencies.redis -eq "connected") {
+                        $readiness = "ready"
+                        $status = "success"
+                        $stage = "rollback_complete"
+                        break
+                    }
+                } catch { }
+            }
+            Start-Sleep -Seconds 2
+        }
+        if ($status -ne "success") {
+            $stage = "rollback_readiness_timeout"
+            throw "Rollback did not become ready within 90 seconds."
+        }
+    } catch {
+        $failureMessage = $_.Exception.Message
+    } finally {
+        try {
+            $null = Add-OpsPilotReleaseRecord -Path $releaseHistoryPath -Action rollback -Status $status -Version $successfulRecord.version -GitSha $successfulRecord.git_sha -Image $successfulRecord.image -Stage $stage -Readiness $readiness
+        } catch { Write-Warning "Could not append the rollback history record." }
+    }
+    if ($status -eq "success") {
+        Write-Host "Rollback succeeded: $($successfulRecord.image)" -ForegroundColor Green
+        exit 0
+    }
+    throw $failureMessage
 }
 
 # 发布流程统一收口，确保成功和失败尝试都能留下记录。
@@ -101,7 +159,7 @@ try {
     $failureMessage = $_.Exception.Message
 } finally {
     try {
-        $null = Add-OpsPilotReleaseRecord -Path $releaseHistoryPath -Status $status -Version $version -GitSha $revision -Image $image -Stage $stage -Readiness $readiness
+        $null = Add-OpsPilotReleaseRecord -Path $releaseHistoryPath -Action deploy -Status $status -Version $version -GitSha $revision -Image $image -Stage $stage -Readiness $readiness
         Write-Host "Release record: $releaseHistoryPath" -ForegroundColor DarkGray
     } catch {
         Write-Warning "Could not append the release history record. Check local data directory permissions."

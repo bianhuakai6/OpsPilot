@@ -75,3 +75,18 @@ def test_inspection_skips_persistence_when_database_check_fails(monkeypatch) -> 
 
     assert report["status"] == "fail"
     assert saved is False
+
+
+def test_inspection_failure_includes_correlated_alert(monkeypatch) -> None:
+    monkeypatch.setattr(inspection, "database_engine", object())
+    monkeypatch.setattr(inspection, "redis_client", None)
+    monkeypatch.setattr(inspection, "check_database", lambda _: False)
+    monkeypatch.setattr(inspection, "save_inspection", lambda *_: None)
+    store = inspection.alert_event_store.__class__()
+    monkeypatch.setattr(inspection, "alert_event_store", store)
+
+    report = inspection.run_inspection()
+
+    assert report["status"] == "fail"
+    assert report["correlated_alerts"][0]["check_id"] == "mysql_connectivity"
+    assert report["correlated_alerts"][0]["status"] == "open"

@@ -6,6 +6,7 @@ import platform
 import shutil
 
 from app.database import check_database
+from app.alerting import alert_event_store
 from app.inspection_store import save_inspection
 from app.metrics import metrics_freshness, metrics_payload
 from app.redis_client import check_redis
@@ -153,6 +154,7 @@ def run_inspection() -> dict[str, object]:
         "checked_at": datetime.now(timezone.utc),
         "checks": checks,
     }
+    report["correlated_alerts"] = alert_event_store.reconcile(report)
     # 数据库故障时不能再把失败报告写回同一个数据库，否则巡检会二次阻塞。
     if database_engine is not None and mysql_available:
         save_inspection(database_engine, report)

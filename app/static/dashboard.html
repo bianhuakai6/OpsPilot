@@ -56,6 +56,7 @@
     </div>
     <section><h2>在线资源</h2><div class="panel" id="activity"><span class="empty">加载中...</span></div></section>
     <section><h2>SLO 可靠性基线</h2><div class="panel" id="slo"><span class="empty">加载中...</span></div></section>
+    <section><h2>巡检关联告警</h2><div class="panel" id="alerts"><span class="empty">加载中...</span></div></section>
     <section><h2>最近一次巡检</h2><div class="panel"><div class="inspection" id="checks"><span class="empty">加载中...</span></div></div></section>
     <section><h2>巡检历史</h2><div class="panel" id="history"><span class="empty">加载中...</span></div></section>
   </main>
@@ -80,12 +81,17 @@
       const kind=data.status==='pass'?'ok':data.status==='fail'?'bad':'warn';
       $('slo').innerHTML=`<div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr))"><div><div class="label">当前状态</div><div class="value status ${kind}"><i class="dot"></i>${status}</div></div><div><div class="label">可用性 / 目标</div><div class="value">${data.availability_percent ?? '--'}% <small>/ ${data.targets.availability_percent}%</small></div></div><div><div class="label">P95 / 目标</div><div class="value">${data.p95_latency_ms ?? '--'} <small>/ ${data.targets.p95_latency_ms} ms</small></div></div><div><div class="label">错误预算消耗</div><div class="value">${data.error_budget_consumed_percent ?? '--'}%</div><div class="label">累计 ${data.observed.total_requests} 次请求，5xx ${data.observed.failed_requests} 次</div></div></div>`;
     }
+    async function renderAlerts() {
+      const data=await json('/api/v1/alerts');
+      const active=data.items.filter(item=>item.status==='open');
+      $('alerts').innerHTML=active.length ? active.map(item=>`<div class="activity-row" style="padding:8px 0;border-bottom:1px solid #e8edf0"><span><strong>${item.check_id}</strong><div class="label">${item.severity} · 连续观测 ${item.occurrences} 次</div><div>${item.evidence}</div><div class="recommendation">${item.recommendation}</div></span><span class="label">${item.status}</span></div>`).join('') : '<span class="empty">当前没有待处理告警</span>';
+    }
     async function refresh() {
       setStatus('liveness','检查中',''); setStatus('readiness','检查中','');
       try { await json('/healthz'); setStatus('liveness','正常','ok'); } catch { setStatus('liveness','异常','bad'); }
       try { await json('/readyz'); setStatus('readiness','正常','ok'); } catch { setStatus('readiness','异常','bad'); }
       try { const activity=await json('/api/v1/activities/activity-001'); const used=activity.capacity-activity.remaining_capacity; $('activity').innerHTML=`<div class="activity-row"><div><strong>${activity.name}</strong><div class="label">${activity.activity_id} · ${activity.status}</div></div><div><strong>${activity.remaining_capacity} / ${activity.capacity}</strong><div class="capacity"><span style="width:${Math.min(100,used/activity.capacity*100)}%"></span></div></div></div>`; } catch { $('activity').innerHTML='<span class="empty">资源数据暂不可用</span>'; }
-      try { const report=await json('/api/v1/inspections/run',{method:'POST'}); renderChecks(report); await renderHistory(); } catch { $('checks').innerHTML='<span class="empty">巡检请求失败，请查看服务日志</span>'; }
+      try { const report=await json('/api/v1/inspections/run',{method:'POST'}); renderChecks(report); await renderHistory(); await renderAlerts(); } catch { $('checks').innerHTML='<span class="empty">巡检请求失败，请查看服务日志</span>'; }
       try { await renderSlo(); } catch { $('slo').innerHTML='<span class="empty">SLO 数据暂不可用</span>'; }
     }
     $('inspect').addEventListener('click', refresh); refresh();

@@ -17,6 +17,8 @@ GET /api/v1/alerts
 
 服务概览页会显示当前 open 告警、最近证据、出现次数和处理建议。演练中停止 Redis 后，巡检应生成 Redis open 告警；恢复 Redis 并再次巡检后，同一事件应变成 resolved，而不是新建一条无关事件。
 
+真实容器验收：镜像 `opspilot:0.1.0-7be8074` 下停止 Redis 后生成 `alert-4b9e7be0-e129-47b5-85ea-a8dd900bd34c`，来源巡检为 `inspection-20261013T081511361891Z`；启动 Redis 后的下一次巡检把同一事件标为 resolved，来源更新为 `inspection-20261013T081601434014Z`。API、MySQL、Redis 均恢复 healthy。
+
 ## 当前边界
 
 事件保存在应用进程内存，服务重启后清空；这是本地关联实验，不是持久化告警系统，也没有 Prometheus Alertmanager、通知渠道、值班路由、RBAC 或审批。真实生产方案需要将事件持久化，并补充告警抑制、分组、通知与审计策略。

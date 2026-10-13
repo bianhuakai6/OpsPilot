@@ -71,26 +71,28 @@ redis:6379
 
 本阶段已验证：
 
-- API 镜像 `opspilot:0.1.0-9bbfba2` 已存在并成功运行。
+- 正式镜像 `opspilot:0.1.0-fcdffc4` 构建成功，并通过容器内测试。
 - API、MySQL、Redis 容器均为 running，健康状态为 healthy。
 - `/readyz` 返回 `ready`，MySQL 和 Redis 均为 `connected`。
 - 停止演练只停止 API，端口释放，MySQL/Redis 保持运行。
-- 再次 deploy 可以恢复 API，默认访问地址仍是 `http://127.0.0.1:8000`。
-- 自动化测试通过：`38 passed, 4 skipped`（MySQL 集成测试按环境开关执行）。
+- 发布 `opspilot:0.1.0-fcdffc4` 后，默认访问地址仍是 `http://127.0.0.1:8000`。
+- 执行 `-Action rollback` 后，API 实际恢复为上一成功镜像 `opspilot:0.1.0-9d59649`。
+- 回滚后 API、MySQL、Redis 仍为 healthy，`/readyz` 仍为 ready。
+- 自动化测试通过：`42 passed, 4 skipped`（MySQL 集成测试按环境开关执行）。
 
 ## 8. 当前还没有做什么
 
-当前是本地容器化发布，不等于完整生产发布系统。已有本机 JSONL 发布记录，但没有集中式发布历史、远程 CI Runner、自动回滚、灰度发布和 Kubernetes 部署。这些属于后续 M3/M4/M6 的范围，不能在当前阶段虚构为已完成能力。
+当前是本地容器化发布，不等于完整生产发布系统。已有本机 JSONL 发布记录和基于不可变镜像的手动回滚，但没有集中式发布历史、远程 CI Runner、自动触发回滚、灰度发布和 Kubernetes 部署。这些属于后续 M4/M6 的范围，不能在当前阶段虚构为已完成能力。
 
 ## 9. 本地发布记录
 
-每次执行 `release-local.ps1 -Action deploy`，脚本会在 `data/release-history.jsonl` 追加一条记录，包含 UTC 时间、动作、结果、版本、Git 短 SHA、镜像、执行阶段和就绪状态。记录格式为 JSON Lines，一行一条 JSON，适合逐条查看，也便于之后导入数据库。
+每次执行 `release-local.ps1 -Action deploy` 或 `-Action rollback`，脚本会在 `data/release-history.jsonl` 追加一条记录，包含 UTC 时间、动作、结果、版本、Git 短 SHA、镜像、执行阶段和就绪状态。记录格式为 JSON Lines，一行一条 JSON，适合逐条查看，也便于之后导入数据库。
 
 成功发布和失败尝试都会记录，包括端口冲突、镜像缺失、容器启动失败或就绪超时。失败阶段用于快速定位流程停在哪里；为避免泄露连接串、令牌等信息，不保存异常原文。`data/` 已由 `.gitignore` 忽略，所以运行记录留在本机，不进入 Git 提交。以后要把它作为多设备共享的发布历史，需要迁移到数据库或集中式存储。
 
 镜像构建前会运行 `scripts/test-release-history.ps1`，用唯一临时文件验证 JSON 追加、核心字段和敏感信息边界；完成后仅删除该测试脚本自己创建的临时文件。
 
-本次验收中，端口 8000 被旧 API 占用时，脚本没有覆盖服务，留下 `failed/port_check` 记录；随后停止旧 API、发布 `opspilot:0.1.0-9d59649`，得到 `success/complete/ready` 记录。API、MySQL、Redis 均 healthy，`/readyz` 为 ready，Dashboard 返回 HTTP 200。容器内测试为 `42 passed, 4 skipped`；4 项 MySQL 集成测试需显式启用。
+本次验收中，先停止旧 API 并发布 `opspilot:0.1.0-fcdffc4`，得到 `success/complete/ready` 记录；随后执行回滚，恢复 `opspilot:0.1.0-9d59649`，得到 `success/rollback_complete/ready` 记录。回滚后 API、MySQL、Redis 均 healthy，`/readyz` 为 ready。容器内测试为 `42 passed, 4 skipped`；4 项 MySQL 集成测试需显式启用。
 
 ## 10. 镜像清理规则
 

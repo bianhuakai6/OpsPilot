@@ -10,6 +10,7 @@ from app.routes.dashboard import router as dashboard_router
 from app.routes.load_testing import router as load_testing_router
 from app.routes.slo import router as slo_router
 from app.routes.alerts import router as alerts_router
+from app.routes.runbooks import router as runbooks_router
 from app.runtime import database_engine, settings
 from app.store import activities, reset_state
 
@@ -26,6 +27,7 @@ app.include_router(dashboard_router)
 app.include_router(load_testing_router)
 app.include_router(slo_router)
 app.include_router(alerts_router)
+app.include_router(runbooks_router)
 
 
 # 兼容学习阶段的导入路径，测试仍可从 app.main 获取核心对象。

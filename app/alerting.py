@@ -57,5 +57,12 @@ class InspectionAlertStore:
             events = [event for event in events if event["status"] == "open"]
         return sorted(events, key=lambda event: event["last_seen_at"], reverse=True)
 
+    def get_event(self, alert_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            for event in self._events.values():
+                if event["alert_id"] == alert_id:
+                    return dict(event)
+        return None
+
 
 alert_event_store = InspectionAlertStore()

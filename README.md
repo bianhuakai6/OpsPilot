@@ -21,9 +21,9 @@ MySQL 基础设施：Docker Engine 可用后运行 `powershell -File .\scripts\m
 
 ## 当前阶段
 
-**M3：发布与回滚闭环（进行中）**
+**M5：Agent 辅助运维（进行中）**
 
-M2 已完成本地依赖、可观测性、巡检、控制台和压力测试闭环。M3 已完成可追溯镜像构建、本地容器化发布入口和本机 JSONL 发布记录；后续将补充健康失败处理和回滚演练。
+M1-M4 已完成本地阶段验收。M5 当前先实现只读 Runbook 推荐：将 Redis/MySQL 巡检告警精确关联到结构化排障步骤，供控制台展示；当前不调用大模型、不执行命令，告警仍保存在 API 进程内存。
 
 ## 文档入口
 
@@ -40,6 +40,7 @@ M2 已完成本地依赖、可观测性、巡检、控制台和压力测试闭�
 - [M2 可视化压力测试](docs/learning/m2-visual-load-testing.md)：任务 API、参数上限和页面交互
 - [M3 镜像构建](docs/learning/m3-image-build.md)：镜像、标签、构建提交与当前边界
 - [M3 本地容器化发布](docs/learning/m3-local-container-release.md)：Compose 合并、容器网络、就绪检查与停止边界
+- [M5 只读 Runbook 推荐](docs/learning/m5-readonly-runbooks.md)：告警关联、精确匹配、人工确认和能力边界
 - [HTTP 接口与请求链路](docs/learning/http-api-and-request-flow.md)：理解 `/docs`、请求组成和服务调用路径
 - [岗位技术分析](三类技术岗位共通技术点分析.md)：目标岗位和能力背景
 
@@ -53,4 +54,4 @@ M2 已完成本地依赖、可观测性、巡检、控制台和压力测试闭�
 
 ## 下一步
 
-下一步推进健康失败处理和回滚演练。环境基线见 [learning-baseline.md](learning-baseline.md)。
+下一步继续 M5：逐步为 Agent 提供受限的告警、日志、指标和发布上下文查询能力，并保留人工确认与审计边界。环境基线见 [learning-baseline.md](learning-baseline.md)。

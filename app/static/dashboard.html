@@ -62,6 +62,7 @@
   </main>
   <script>
     const $ = (id) => document.getElementById(id);
+    const escapeHtml = (value) => String(value).replace(/[&<>\"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[char]));
     const setStatus = (id, text, kind) => { const el=$(id); el.className=`value status ${kind||''}`; el.innerHTML=`<i class="dot"></i>${text}`; };
     async function json(url, options) { const response=await fetch(url, options); if(!response.ok) throw new Error(`${response.status}`); return response.json(); }
     function renderChecks(report) {
@@ -84,7 +85,18 @@
     async function renderAlerts() {
       const data=await json('/api/v1/alerts');
       const active=data.items.filter(item=>item.status==='open');
-      $('alerts').innerHTML=active.length ? active.map(item=>`<div class="activity-row" style="padding:8px 0;border-bottom:1px solid #e8edf0"><span><strong>${item.check_id}</strong><div class="label">${item.severity} · 连续观测 ${item.occurrences} 次</div><div>${item.evidence}</div><div class="recommendation">${item.recommendation}</div></span><span class="label">${item.status}</span></div>`).join('') : '<span class="empty">当前没有待处理告警</span>';
+      if (!active.length) { $('alerts').innerHTML='<span class="empty">当前没有待处理告警</span>'; return; }
+      const recommendations=await Promise.all(active.map(async item=>{
+        try { return await json(`/api/v1/alerts/${encodeURIComponent(item.alert_id)}/runbook`); }
+        catch(error) { return {error:error.message}; }
+      }));
+      $('alerts').innerHTML=active.map((item,index)=>{
+        const recommendation=recommendations[index];
+        const runbook=recommendation.runbook;
+        const steps=runbook ? `<div class="label" style="margin-top:8px">建议先核查</div><ul>${runbook.safe_checks.map(check=>`<li>${check.kind==='browser'?'浏览器访问':'执行'} <code>${escapeHtml(check.value)}</code>，预期：${escapeHtml(check.expected)}</li>`).join('')}</ul>` : `<div class="recommendation">${recommendation.error==='404'?'暂无匹配的 Runbook，请参考上方巡检建议。':'Runbook 建议暂不可用，请稍后重试。'}</div>`;
+        const title=runbook ? ` · ${escapeHtml(runbook.title)}` : '';
+        return `<article style="padding:10px 0;border-bottom:1px solid #e8edf0"><div class="activity-row"><span><strong>${escapeHtml(item.check_id)}</strong><div class="label">${escapeHtml(item.severity)} · 连续观测 ${escapeHtml(item.occurrences)} 次${title}</div><div>${escapeHtml(item.evidence)}</div></span><span class="label">${escapeHtml(item.status)}</span></div>${steps}${runbook?'<div class="recommendation">恢复动作需要人工确认；平台没有执行命令。</div>':''}</article>`;
+      }).join('');
     }
     async function refresh() {
       setStatus('liveness','检查中',''); setStatus('readiness','检查中','');

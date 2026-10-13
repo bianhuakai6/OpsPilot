@@ -1,6 +1,6 @@
 # OpsPilot Agent 交接说明
 
-> 记录日期：2026-10-09。本文中的 Git 同步状态可能随后变化；接手前请以 `git status -sb` 和 `git log` 实际检查为准。
+> 记录日期：2026-10-13。本文中的 Git 同步状态和容器状态可能随后变化；接手前请以 `git status -sb`、`git log` 和 Docker 实际状态为准。
 
 ## 项目目标与协作方式
 
@@ -71,21 +71,16 @@ docker compose -f docker-compose.yml -f docker-compose.release.yml down
 
 ## 当前实现范围与下一阶段
 
-README 将项目标为 M3（发布与回滚闭环）进行中。M1 业务闭环和 M2 本地依赖、可观测性、自动巡检、控制台、压力测试已有实现和学习记录；M3 已具备可追溯镜像构建、本地容器化部署入口和本机 JSONL 发布记录。M3 后续仍需补齐并验收：
+M1-M4 已完成本地阶段验收，详见 `DEVELOPMENT_PLAN.md`、`docs/learning/m4-acceptance.md` 和 `docs/incidents/`。当前进入 M5（Agent 辅助运维），第一块只读能力已将 Redis/MySQL 告警精确关联到结构化 Runbook，并在控制台展示核查步骤。该能力不调用大模型、不执行命令；告警事件仍驻留 API 进程内存。学习说明见 `docs/learning/m5-readonly-runbooks.md`。
 
-1. 健康检查失败处理：验证发布未就绪时能清楚报告、保留诊断证据，并有明确的恢复路径。
-2. 回滚演练：用上一个已验证镜像恢复，验证应用健康，并留下演练记录。
-
-发布记录保存在被 Git 忽略的 `data/release-history.jsonl`，记录时间、版本、Git SHA、镜像、结果、失败阶段和就绪状态，不保存异常原文。它是本机数据，不随仓库跨设备同步。2026-10-09 已验证成功发布和端口冲突拒绝两条路径，结果分别为 `success/complete/ready` 与 `failed/port_check/not_checked`。
-
-然后再按 `DEVELOPMENT_PLAN.md` 评估 M4 故障演练与 SLO。不要跳过本地发布/回滚闭环，提前扩展云或 Kubernetes 范围。
+M5 后续按小步推进：增加经筛选的日志、指标和发布上下文查询；再实现可验证的根因候选与建议评估；最后完善人工审批、操作审计和恢复后指标验证。至少两类故障通过演练前，不宣称 M5 完成。云环境、Kubernetes 和自主执行运维命令仍不在当前本地阶段范围。
 
 ## 新 Agent 接手流程
 
 1. 先读本文、`README.md`、`DEVELOPMENT_PLAN.md`、`AGENT_WORKFLOW.md` 和相关 `docs/learning/` 学习记录。
 2. 检查 `git status -sb`、最近提交和 Docker Compose 状态；不要假设交接时这台机器的服务仍在运行。
 3. 若 `main` 领先远端且用户希望跨设备同步，提醒用户推送；不要私自改远端或重写历史。
-4. 从 M3 剩余事项中选一个边界清楚的小阶段，先说明范围，再实现、测试、复核文档和 Git 差异。
+4. 从 M5 剩余事项中选一个边界清楚的小阶段，先说明范围，再实现、测试、复核文档和 Git 差异。
 5. 结束时说明页面/命令如何验收、测试结果、当前容器/镜像影响，以及建议的下一步。
 
 ## 重要配置与安全边界

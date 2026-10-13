@@ -57,3 +57,21 @@ def test_resource_checks_report_low_disk_space(monkeypatch) -> None:
     assert checks["disk_space"]["status"] == "fail"
     assert checks["disk_space"]["severity"] == "critical"
     assert checks["memory_available"]["status"] == "pass"
+
+
+def test_inspection_skips_persistence_when_database_check_fails(monkeypatch) -> None:
+    saved = False
+
+    monkeypatch.setattr(inspection, "database_engine", object())
+    monkeypatch.setattr(inspection, "redis_client", None)
+    monkeypatch.setattr(inspection, "check_database", lambda _: False)
+
+    def fail_if_saved(*args: object, **kwargs: object) -> None:
+        nonlocal saved
+        saved = True
+
+    monkeypatch.setattr(inspection, "save_inspection", fail_if_saved)
+    report = inspection.run_inspection()
+
+    assert report["status"] == "fail"
+    assert saved is False

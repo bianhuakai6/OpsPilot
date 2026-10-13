@@ -126,11 +126,13 @@ def run_inspection() -> dict[str, object]:
     ))
     checks.extend(_resource_checks())
 
+    mysql_available = database_engine is None
     if database_engine is None:
         checks.append(_check("mysql_connectivity", "skipped", "info", "当前 OPSPILOT_STORAGE 不是 mysql", "启用 MySQL 模式后再检查数据库"))
     else:
         try:
             available = check_database(database_engine)
+            mysql_available = available
             checks.append(_check("mysql_connectivity", "pass" if available else "fail", "info" if available else "critical", "SELECT 1 返回成功" if available else "数据库探测未返回成功", "保持数据库连接池可用" if available else "检查 MySQL 容器、连接串和凭据"))
         except Exception as exc:
             checks.append(_check("mysql_connectivity", "fail", "critical", f"数据库连接异常: {type(exc).__name__}", "检查 MySQL 容器、连接串和凭据"))
@@ -151,7 +153,8 @@ def run_inspection() -> dict[str, object]:
         "checked_at": datetime.now(timezone.utc),
         "checks": checks,
     }
-    if database_engine is not None:
+    # 数据库故障时不能再把失败报告写回同一个数据库，否则巡检会二次阻塞。
+    if database_engine is not None and mysql_available:
         save_inspection(database_engine, report)
     inspection_history.appendleft(report)
     return report

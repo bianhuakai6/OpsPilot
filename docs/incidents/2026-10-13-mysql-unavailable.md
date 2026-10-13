@@ -18,10 +18,10 @@
 - 故障窗口 `/readyz` 返回 HTTP 503，实测耗时约 4.1 秒。
 - MySQL 启动后等待 Docker healthcheck 变为 healthy；`/readyz` 返回 ready 且 MySQL、Redis 均 connected。
 - 恢复后的巡检整体 pass，`mysql_connectivity` 为 pass。
-- 初次演练显示巡检在数据库连接异常时等待时间偏长，因此补充 SQLAlchemy `connect_timeout`、`read_timeout` 和 `write_timeout` 均为 2 秒；完整复测需在新镜像部署后进行。
+- 初次演练显示巡检在数据库连接异常时等待时间偏长，因此补充 SQLAlchemy `connect_timeout`、`read_timeout` 和 `write_timeout` 均为 2 秒；同时巡检在数据库检查失败时跳过失败报告持久化，避免向不可用数据库再次写入。
 
 ## 改进项
 
 - 已完成：将 MySQL 连接超时集中配置在 `app/database.py`，并用单元测试锁定配置。
-- 待复测：部署含超时修复的新镜像后，停止 MySQL，确认巡检也能在有限窗口内返回 fail 报告。
+- 待复测：部署含超时和跳过持久化修复的新镜像后，停止 MySQL，确认巡检也能在有限窗口内返回 fail 报告。
 - 尚未覆盖：MySQL 慢查询、连接池耗尽和事务锁等待演练。

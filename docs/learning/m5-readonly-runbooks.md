@@ -14,6 +14,8 @@
 
 独立查询入口为 `GET /api/v1/runbooks` 和 `GET /api/v1/runbooks/{runbook_id}`。当前有 Redis、MySQL 两份 Runbook；其它检查项没有匹配时会明确显示“暂无匹配的 Runbook”，不影响告警和巡检结果。
 
+供后续 Agent 或人工排障使用的聚合入口是 `GET /api/v1/ops-context/alerts/{alert_id}`。它把告警事实、Runbook、当前 SLO 快照和来源巡检 ID 放在同一个结构中，并返回 `agent_boundary` 声明只读、未执行命令、未调用外部模型且操作需要人工审批。
+
 ## Runbook 字段怎么看
 
 - `symptoms`：可能观察到的现象。
@@ -28,6 +30,8 @@
 ## 当前边界
 
 告警状态存于 API 单进程内存，服务重启后会清空；多副本也不会共享。Runbook 是代码中的静态结构化数据，匹配依赖稳定的 `check_id`。当前只覆盖 Redis/MySQL 连接异常。后续 Agent 需要再接入经过筛选的日志、指标和发布记录上下文，生成可验证的根因候选，并以评估样例、人工审批和操作审计约束风险。
+
+上下文接口当前不会查询完整日志、发布历史或数据库连接配置；这是刻意的最小权限边界，避免 Agent 一开始就获得过宽的数据访问范围。
 
 ## 如何验证
 

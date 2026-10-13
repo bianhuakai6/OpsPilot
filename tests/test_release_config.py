@@ -8,6 +8,8 @@ def test_release_compose_uses_a_versioned_api_image_and_dependency_checks() -> N
     assert "pull_policy: never" in content
     assert "OPSPILOT_STORAGE: mysql" in content
     assert "OPSPILOT_REDIS_ENABLED: \"true\"" in content
+    assert "OPSPILOT_SLO_AVAILABILITY" in content
+    assert "OPSPILOT_SLO_P95_MS" in content
     assert "condition: service_healthy" in content
     assert "/readyz" in content
 

@@ -12,6 +12,8 @@ services:
       OPSPILOT_PORT: 8000
       OPSPILOT_STORAGE: mysql
       OPSPILOT_REDIS_ENABLED: "true"
+      OPSPILOT_SLO_AVAILABILITY: ${OPSPILOT_SLO_AVAILABILITY:-99.9}
+      OPSPILOT_SLO_P95_MS: ${OPSPILOT_SLO_P95_MS:-500}
       OPSPILOT_DATABASE_URL: mysql+pymysql://${MYSQL_USER:-opspilot}:${MYSQL_PASSWORD:-opspilot_local_password}@mysql:3306/${MYSQL_DATABASE:-opspilot}?charset=utf8mb4
       OPSPILOT_REDIS_URL: redis://redis:6379/0
     ports:

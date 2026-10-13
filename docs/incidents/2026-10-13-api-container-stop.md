@@ -14,7 +14,9 @@
 
 ## 结论与边界
 
-- 这次操作验证了人工停止后的手动恢复流程，不等于验证了意外进程崩溃后的自动重启。
-- `unless-stopped` 可处理容器进程退出等由 Docker 观察到的异常退出，但人工停止会抑制重启策略；真实生产自愈还需用 Kubernetes 控制器或明确的进程故障注入进一步验证。
+- `docker kill` 属于人工停止操作，Docker 不会自动重启；`docker start` 后服务可恢复。
+- 隔离短命容器的进程非零退出实验中，`on-failure:2` 重启计数达到 2；`unless-stopped` 实验中，进程异常退出后容器反复重启，手动停止后结束重启。
+- 随后对实际 API 容器 PID 1 发送 `SIGTERM`，Compose 的 `unless-stopped` 自动拉起 API，`RestartCount` 从 0 增至 1；容器恢复 running/healthy，`/readyz` 返回 ready。正式镜像仍为 `opspilot:0.1.0-7be8074`。
+- 因此已验证本地容器进程异常退出时 Docker 重启策略生效；这不是 Kubernetes 自愈、节点故障恢复或多副本高可用验收。
 - 未修改 MySQL、Redis、数据卷或预约数据。服务中断期间没有执行业务写请求。
-- 后续行动：在可控测试容器中设计可重复的非人工退出注入，并分别验证容器重启与健康检查恢复；当前不把自动恢复写为已验收能力。
+- 后续行动：在 Kubernetes 阶段验证 Pod 自愈、readiness/liveness 和滚动更新；当前不能把这些能力写成已完成。

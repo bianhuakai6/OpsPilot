@@ -61,13 +61,13 @@ docker compose -f docker-compose.yml -f docker-compose.release.yml down
 
 | 服务 | 容器 | 镜像 | 状态 | 主机端口 |
 | --- | --- | --- | --- | --- |
-| API | `opspilot-api` | `opspilot:0.1.0-d05f51c` | healthy | 8000 |
+| API | `opspilot-api` | `opspilot:0.1.0-e63c43b` | healthy | 8000 |
 | MySQL | `opspilot-mysql` | `mysql:8.4` | healthy | 3306 |
 | Redis | `opspilot-redis` | `redis:7.4` | healthy | 6379 |
 
-最近一次完整容器测试：`77 passed, 4 skipped`（跳过项是需显式启用的 MySQL 集成测试）。2026-10-14 已对 `opspilot:0.1.0-d05f51c` 完成实际部署成功验收：API readiness 为 ready，MySQL/Redis 为 connected，Runbook、只读运维上下文、四个受限 Agent 工具和 Responses 分析入口已注册；已用本机 `.env` 配置完成 Redis 故障真实模型分析，模型返回结构化 JSON，随后恢复 Redis 并确认巡检 pass、告警 resolved。发布记录工具在当前容器返回 `available=false`，明确说明宿主机发布文件未挂载。当前页面在 `http://127.0.0.1:8000/dashboard`。这证明当前设备上的该版本能启动，不等同于已在另一台机器验收；新机器仍要实际双击启动并复核页面和容器状态。
+最近一次完整容器测试：`80 passed, 4 skipped`（跳过项是需显式启用的 MySQL 集成测试）。2026-10-14 已对 `opspilot:0.1.0-e63c43b` 完成实际部署成功验收：API readiness 为 ready，MySQL/Redis 为 connected，Runbook、只读运维上下文、四个受限 Agent 工具和 Responses 分析入口已注册；已用本机 `.env` 配置完成 Redis 故障真实模型分析，模型返回结构化 JSON 并生成审计 ID，随后恢复 Redis 并确认巡检 pass、告警 resolved。发布记录工具在当前容器返回 `available=false`，明确说明宿主机发布文件未挂载。当前页面在 `http://127.0.0.1:8000/dashboard`。这证明当前设备上的该版本能启动，不等同于已在另一台机器验收；新机器仍要实际双击启动并复核页面和容器状态。
 
-仓库中还留有若干带正式 Git SHA 的历史镜像，作为发布/回滚记录保留是有意行为，不代表它们正在运行。当前运行 API 使用 `0.1.0-d05f51c`。本次测试镜像由构建脚本自动清理；其它临时测试镜像应按 `scripts/cleanup-images.ps1` 的预览结果逐一判断，不能批量删除正式标签。
+仓库中还留有若干带正式 Git SHA 的历史镜像，作为发布/回滚记录保留是有意行为，不代表它们正在运行。当前运行 API 使用 `0.1.0-e63c43b`。本次测试镜像由构建脚本自动清理；其它临时测试镜像应按 `scripts/cleanup-images.ps1` 的预览结果逐一判断，不能批量删除正式标签。
 
 ## 当前实现范围与下一阶段
 

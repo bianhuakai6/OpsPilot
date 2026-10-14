@@ -61,13 +61,13 @@ docker compose -f docker-compose.yml -f docker-compose.release.yml down
 
 | 服务 | 容器 | 镜像 | 状态 | 主机端口 |
 | --- | --- | --- | --- | --- |
-| API | `opspilot-api` | `opspilot:0.1.0-79454d0` | healthy | 8000 |
+| API | `opspilot-api` | `opspilot:0.1.0-8528d94` | healthy | 8000 |
 | MySQL | `opspilot-mysql` | `mysql:8.4` | healthy | 3306 |
 | Redis | `opspilot-redis` | `redis:7.4` | healthy | 6379 |
 
-最近一次完整容器测试：`67 passed, 4 skipped`（跳过项是需显式启用的 MySQL 集成测试）。2026-10-13 已对 `opspilot:0.1.0-79454d0` 完成实际部署成功验收：API readiness 为 ready，MySQL/Redis 为 connected，Runbook API 和只读运维上下文接口已注册；此前已完成 Redis 停止 -> open 告警 -> Runbook 精确匹配 -> Redis 恢复 -> resolved 的真实演练。当前页面在 `http://127.0.0.1:8000/dashboard`。这证明当前设备上的该版本能启动，不等同于已在另一台机器验收；新机器仍要实际双击启动并复核页面和容器状态。
+最近一次完整容器测试：`70 passed, 4 skipped`（跳过项是需显式启用的 MySQL 集成测试）。2026-10-14 已对 `opspilot:0.1.0-8528d94` 完成实际部署成功验收：API readiness 为 ready，MySQL/Redis 为 connected，Runbook、只读运维上下文和四个受限 Agent 工具已注册；发布记录工具在当前容器返回 `available=false`，明确说明宿主机发布文件未挂载。此前已完成 Redis 停止 -> open 告警 -> Runbook 精确匹配 -> Redis 恢复 -> resolved 的真实演练。当前页面在 `http://127.0.0.1:8000/dashboard`。这证明当前设备上的该版本能启动，不等同于已在另一台机器验收；新机器仍要实际双击启动并复核页面和容器状态。
 
-仓库中还留有若干带正式 Git SHA 的历史镜像，作为发布/回滚记录保留是有意行为，不代表它们正在运行。当前运行 API 使用 `0.1.0-79454d0`。临时验证镜像已清理；其它临时测试镜像应按 `scripts/cleanup-images.ps1` 的预览结果逐一判断，不能批量删除正式标签。
+仓库中还留有若干带正式 Git SHA 的历史镜像，作为发布/回滚记录保留是有意行为，不代表它们正在运行。当前运行 API 使用 `0.1.0-8528d94`。本次测试镜像由构建脚本自动清理；其它临时测试镜像应按 `scripts/cleanup-images.ps1` 的预览结果逐一判断，不能批量删除正式标签。
 
 ## 当前实现范围与下一阶段
 

@@ -47,6 +47,8 @@
 
 API Key 只放在本机 `.env`，该文件已被 Git 忽略；`.env.example` 只包含空占位符。不要把 Key 放进代码、镜像、提交或聊天内容。模型请求设置 `store=false`，并且当前服务不持久化模型原文，后续还需要增加脱敏、响应结构校验和分析审计。
 
+2026-10-14 已完成一次真实本机闭环：停止 Redis 产生 open 告警，调用 `/api/v1/agent/analyze/{alert_id}` 返回 HTTP 200、模型为 `gpt-5.6-terra` 且有文本结果；随后恢复 Redis，巡检 pass、`/readyz` ready、原告警 resolved。该证据证明连接和协议可用，不代表模型结论天然正确；当前分析结果仍需人工阅读，不能自动执行。
+
 ## 如何验证
 
 - 自动测试：`python -m pytest -q`，覆盖字段边界、精确匹配、无匹配响应和“永不执行”声明。

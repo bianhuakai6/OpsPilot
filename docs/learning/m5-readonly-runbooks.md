@@ -51,6 +51,8 @@ API Key 只放在本机 `.env`，该文件已被 Git 忽略；`.env.example` 只
 
 模型输出现在必须是 JSON 对象，并包含 `root_cause_candidates`、`evidence`、`recommended_checks`、`risk_level`、`requires_human_approval` 五个字段，且审批字段必须为 `true`。不符合契约时返回 `invalid_model_output`，不会把自由文本直接当成可信结论。
 
+分析结果还会产生只读审计元数据，可通过 `GET /api/v1/agent/audit` 查看。记录包含告警 ID、模型、状态、时间、失败原因和审计 ID，不保存 API Key、完整提示词或完整模型原文；当前审计存于进程内存，重启后清空。质量检查要求根因候选、证据、核查步骤均为非空列表，风险等级只能是 `low/medium/high/critical`。
+
 ## 如何验证
 
 - 自动测试：`python -m pytest -q`，覆盖字段边界、精确匹配、无匹配响应和“永不执行”声明。

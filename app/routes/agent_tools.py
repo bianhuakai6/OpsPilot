@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.agent_tools import call_tool, list_tools
+from app.agent_audit import agent_audit_store
 
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-tools"])
@@ -23,3 +24,8 @@ def invoke_tool(tool_name: str, limit: int = Query(default=10, ge=1, le=20)) -> 
         raise HTTPException(status_code=404, detail={"code": "tool_not_found"})
     except ValueError as exc:
         raise HTTPException(status_code=422, detail={"code": "invalid_tool_arguments", "message": str(exc)})
+
+
+@router.get("/audit")
+def audit_events(limit: int = Query(default=20, ge=1, le=20)) -> dict[str, object]:
+    return {"items": agent_audit_store.list_events(limit)}

@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, HTTPException
 
 from app.alerting import alert_event_store
+from app.agent_audit import agent_audit_store
 from app.config import Settings
 from app.model_client import ModelClientError, request_response
 from app.runbooks import get_runbook_for_check
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/api/v1/agent", tags=["agent-analysis"])
 REQUIRED_ANALYSIS_FIELDS = (
     "root_cause_candidates", "evidence", "recommended_checks", "risk_level", "requires_human_approval"
 )
+ALLOWED_RISK_LEVELS = {"low", "medium", "high", "critical"}
 
 
 def _analysis_prompt(alert: dict[str, object]) -> str:
@@ -40,6 +42,14 @@ def _parse_analysis(text: str) -> dict[str, object]:
         raise ModelClientError("模型分析缺少必需字段")
     if parsed["requires_human_approval"] is not True:
         raise ModelClientError("模型分析未声明人工审批")
+    if not isinstance(parsed["root_cause_candidates"], list) or not parsed["root_cause_candidates"]:
+        raise ModelClientError("模型分析缺少根因候选")
+    if not isinstance(parsed["evidence"], list) or not parsed["evidence"]:
+        raise ModelClientError("模型分析缺少证据")
+    if not isinstance(parsed["recommended_checks"], list) or not parsed["recommended_checks"]:
+        raise ModelClientError("模型分析缺少核查步骤")
+    if parsed["risk_level"] not in ALLOWED_RISK_LEVELS:
+        raise ModelClientError("模型分析风险等级无效")
     return parsed
 
 
@@ -48,19 +58,24 @@ def analyze_alert(alert_id: str) -> dict[str, object]:
     alert = alert_event_store.get_event(alert_id)
     if alert is None:
         raise HTTPException(status_code=404, detail={"code": "alert_not_found"})
+    settings = Settings.from_env()
     try:
-        result = request_response(_analysis_prompt(alert), Settings.from_env())
+        result = request_response(_analysis_prompt(alert), settings)
     except ModelClientError as exc:
+        agent_audit_store.record(alert_id=alert_id, model=settings.model_name, status="failed", reason="model_unavailable")
         raise HTTPException(status_code=503, detail={"code": "model_unavailable", "message": str(exc)})
     try:
         analysis = _parse_analysis(result["text"])
     except ModelClientError as exc:
+        agent_audit_store.record(alert_id=alert_id, model=result["model"], status="rejected", reason="invalid_model_output")
         raise HTTPException(status_code=502, detail={"code": "invalid_model_output", "message": str(exc)})
+    audit = agent_audit_store.record(alert_id=alert_id, model=result["model"], status="completed")
     return {
         "analysis_status": "completed",
         "alert_id": alert_id,
         "model": result["model"],
         "response_id": result["response_id"],
         "analysis": analysis,
+        "audit_id": audit["audit_id"],
         "boundary": {"read_only": True, "commands_executed": False, "human_approval_required": True},
     }

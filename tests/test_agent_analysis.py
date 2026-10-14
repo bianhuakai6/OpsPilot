@@ -34,3 +34,11 @@ def test_analysis_requires_human_approval_in_model_output() -> None:
     payload = '{"root_cause_candidates": [], "evidence": [], "recommended_checks": [], "risk_level": "low", "requires_human_approval": false}'
     with pytest.raises(ModelClientError, match="人工审批"):
         agent_analysis._parse_analysis(payload)
+
+
+def test_analysis_requires_evidence_and_candidate_lists() -> None:
+    import pytest
+
+    payload = '{"root_cause_candidates": [], "evidence": [], "recommended_checks": [], "risk_level": "low", "requires_human_approval": true}'
+    with pytest.raises(ModelClientError, match="根因候选"):
+        agent_analysis._parse_analysis(payload)

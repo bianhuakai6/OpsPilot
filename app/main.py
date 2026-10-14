@@ -12,6 +12,7 @@ from app.routes.slo import router as slo_router
 from app.routes.alerts import router as alerts_router
 from app.routes.runbooks import router as runbooks_router
 from app.routes.ops_context import router as ops_context_router
+from app.routes.agent_tools import router as agent_tools_router
 from app.runtime import database_engine, settings
 from app.store import activities, reset_state
 
@@ -30,6 +31,7 @@ app.include_router(slo_router)
 app.include_router(alerts_router)
 app.include_router(runbooks_router)
 app.include_router(ops_context_router)
+app.include_router(agent_tools_router)
 
 
 # 兼容学习阶段的导入路径，测试仍可从 app.main 获取核心对象。

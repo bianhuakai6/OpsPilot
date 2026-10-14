@@ -39,6 +39,14 @@
 
 工具目录就是后续模型适配层的契约：模型只能从目录中选择工具，应用服务负责校验工具名和参数，再返回结构化 JSON。模型不能自行拼接命令绕过白名单。
 
+## 模型适配层（第一版）
+
+当前已接入 Responses 原生协议客户端。模型配置来自 `.env` 或容器环境变量：`OPSPILOT_MODEL_BASE_URL`、`OPSPILOT_MODEL_RESPONSES_PATH`、`OPSPILOT_MODEL`、`OPSPILOT_MODEL_API_KEY` 和超时配置。默认值对应 AirCode 的 `https://api.aircode.xin/responses` 与 `gpt-5.6-terra`；路径可配置为 `/v1/responses`，便于兼容不同网关。
+
+分析入口是 `POST /api/v1/agent/analyze/{alert_id}`。服务端把告警、匹配 Runbook 和 SLO 快照组织成提示词，要求模型返回根因候选、证据、核查步骤、风险等级和人工审批字段。接口只返回模型文本和响应 ID，不执行文本中的命令。没有 API Key、网络失败或响应格式不符合 Responses 结构时，接口返回明确的 `model_unavailable`，而不是让应用启动失败。
+
+API Key 只放在本机 `.env`，该文件已被 Git 忽略；`.env.example` 只包含空占位符。不要把 Key 放进代码、镜像、提交或聊天内容。模型请求设置 `store=false`，并且当前服务不持久化模型原文，后续还需要增加脱敏、响应结构校验和分析审计。
+
 ## 如何验证
 
 - 自动测试：`python -m pytest -q`，覆盖字段边界、精确匹配、无匹配响应和“永不执行”声明。

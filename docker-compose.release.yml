@@ -16,6 +16,11 @@ services:
       OPSPILOT_SLO_P95_MS: ${OPSPILOT_SLO_P95_MS:-500}
       OPSPILOT_DATABASE_URL: mysql+pymysql://${MYSQL_USER:-opspilot}:${MYSQL_PASSWORD:-opspilot_local_password}@mysql:3306/${MYSQL_DATABASE:-opspilot}?charset=utf8mb4
       OPSPILOT_REDIS_URL: redis://redis:6379/0
+      OPSPILOT_MODEL_BASE_URL: ${OPSPILOT_MODEL_BASE_URL:-https://api.aircode.xin}
+      OPSPILOT_MODEL_RESPONSES_PATH: ${OPSPILOT_MODEL_RESPONSES_PATH:-/responses}
+      OPSPILOT_MODEL: ${OPSPILOT_MODEL:-gpt-5.6-terra}
+      OPSPILOT_MODEL_API_KEY: ${OPSPILOT_MODEL_API_KEY:-}
+      OPSPILOT_MODEL_TIMEOUT_SECONDS: ${OPSPILOT_MODEL_TIMEOUT_SECONDS:-30}
     ports:
       - "${OPSPILOT_PORT:-8000}:8000"
     depends_on:

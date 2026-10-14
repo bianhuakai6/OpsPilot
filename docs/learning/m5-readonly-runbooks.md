@@ -35,7 +35,7 @@
 
 ## 受限只读工具
 
-第三块 M5 能力提供 `GET /api/v1/agent/tools` 工具目录，以及固定工具调用入口 `GET /api/v1/agent/tools/{tool_name}`。目前白名单只有 `list_alerts`、`latest_inspections`、`slo_snapshot` 和 `release_history`，并把 `limit` 限制在 1 到 20。工具调用不会执行 Shell、访问任意 URL 或修改服务状态；发布记录只返回时间、动作、版本、镜像、Git SHA、阶段和就绪状态等安全元数据。
+第三块 M5 能力提供 `GET /api/v1/agent/tools` 工具目录，以及固定工具调用入口 `GET /api/v1/agent/tools/{tool_name}`。目前白名单只有 `list_alerts`、`latest_inspections`、`slo_snapshot` 和 `release_history`，并把 `limit` 限制在 1 到 20。工具调用不会执行 Shell、访问任意 URL 或修改服务状态；发布记录只返回时间、动作、版本、镜像、Git SHA、阶段和就绪状态等安全元数据。发布记录是宿主机本地文件，未挂载到 API 容器时返回 `available=false` 和原因，不把“不可见”伪装成“没有记录”。
 
 工具目录就是后续模型适配层的契约：模型只能从目录中选择工具，应用服务负责校验工具名和参数，再返回结构化 JSON。模型不能自行拼接命令绕过白名单。
 

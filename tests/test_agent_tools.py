@@ -23,6 +23,8 @@ def test_tools_return_structured_data_and_reject_unknown_or_unsafe_arguments() -
     assert "items" in client.get("/api/v1/agent/tools/list_alerts").json()
     assert "items" in client.get("/api/v1/agent/tools/latest_inspections").json()
     assert "status" in client.get("/api/v1/agent/tools/slo_snapshot").json()
-    assert "items" in client.get("/api/v1/agent/tools/release_history").json()
+    release_history = client.get("/api/v1/agent/tools/release_history").json()
+    assert "items" in release_history
+    assert "available" in release_history
     assert client.get("/api/v1/agent/tools/exec_shell").status_code == 404
     assert client.get("/api/v1/agent/tools/list_alerts?limit=21").status_code == 422

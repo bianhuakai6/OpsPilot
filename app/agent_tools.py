@@ -52,9 +52,9 @@ def _bounded_limit(limit: int) -> int:
     return limit
 
 
-def _release_history(limit: int) -> list[dict[str, Any]]:
+def _release_history(limit: int) -> dict[str, Any]:
     if not RELEASE_HISTORY_PATH.exists():
-        return []
+        return {"available": False, "source": "host_release_history_not_mounted", "items": []}
     records: list[dict[str, Any]] = []
     for line in RELEASE_HISTORY_PATH.read_text(encoding="utf-8").splitlines():
         try:
@@ -65,7 +65,7 @@ def _release_history(limit: int) -> list[dict[str, Any]]:
         records.append({key: raw.get(key) for key in (
             "recorded_at_utc", "action", "status", "version", "git_sha", "image", "stage", "readiness"
         )})
-    return records[-limit:][::-1]
+    return {"available": True, "source": "data/release-history.jsonl", "items": records[-limit:][::-1]}
 
 
 def call_tool(name: str, *, limit: int = 10) -> dict[str, Any]:
@@ -79,5 +79,5 @@ def call_tool(name: str, *, limit: int = 10) -> dict[str, Any]:
     if name == "slo_snapshot":
         return slo_snapshot()
     if name == "release_history":
-        return {"items": _release_history(_bounded_limit(limit))}
+        return _release_history(_bounded_limit(limit))
     raise KeyError(f"unknown_tool:{name}")

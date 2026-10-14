@@ -19,3 +19,18 @@ def test_analysis_requires_alert_and_model(monkeypatch) -> None:
 
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "model_unavailable"
+
+
+def test_analysis_rejects_unstructured_model_output() -> None:
+    import pytest
+
+    with pytest.raises(ModelClientError, match="不是有效 JSON"):
+        agent_analysis._parse_analysis("不是 JSON")
+
+
+def test_analysis_requires_human_approval_in_model_output() -> None:
+    import pytest
+
+    payload = '{"root_cause_candidates": [], "evidence": [], "recommended_checks": [], "risk_level": "low", "requires_human_approval": false}'
+    with pytest.raises(ModelClientError, match="人工审批"):
+        agent_analysis._parse_analysis(payload)
